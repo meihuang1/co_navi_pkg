@@ -1,0 +1,7 @@
+drone_0:
+  init_x: -20.0
+  init_y: -9.0
+  init_z: 0.1
+  target_x: 20.0
+  target_y: 9.0
+  target_z: 1.0

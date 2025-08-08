@@ -1,0 +1,36 @@
+<launch>
+    <!-- 参数设置 -->
+    <arg name="drone_id"/>
+    <arg name="origin_lat"/>
+    <arg name="origin_lon"/>
+    <arg name="origin_alt"/>
+    <arg name="init_x"/>
+    <arg name="init_y"/>
+    <arg name="init_z"/>
+    
+    <!-- ESKF 节点 -->
+    <node pkg="co_navi_pkg" type="eskf_fusion_IG_node" name="eskf_$(arg drone_id)" output="screen">
+        <param name="drone_id" value="$(arg drone_id)"/>
+        <!-- <param name="frame_id" value="$(arg drone_id)/base_link" />
+        <param name="odom_frame" value="$(arg drone_id)/odom" />
+        <param name="imu_topic" value="/$(arg drone_id)/imu" />
+        <param name="gps_topic" value="/$(arg drone_id)/gps" />
+        <param name="mag_topic" value="/$(arg drone_id)/mag" />
+        <param name="vgps_topic" value="/$(arg drone_id)/gps_vel" /> -->
+        
+        <!-- 噪声参数 -->     
+        <param name="sigma_g" value="0.005" />
+        <param name="sigma_a" value="0.05" />
+        <param name="sigma_p" value="0.3" />
+        <param name="sigma_vgps" value="0.25" />
+        <param name="sigma_m" value="5e-6" />
+
+        <param name="origin_lat" value="$(arg origin_lat)" />
+        <param name="origin_lon" value="$(arg origin_lon)" />
+        <param name="origin_alt" value="$(arg origin_alt)" />
+        <param name="init_x" value="$(arg init_x)" />
+        <param name="init_y" value="$(arg init_y)" />
+        <param name="init_z" value="$(arg init_z)" />
+    </node>
+
+</launch>

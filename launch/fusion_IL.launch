@@ -1,0 +1,21 @@
+<launch>
+    <arg name="icp_max_distance" default="2.0" />
+    <arg name="icp_max_iter" default="50" />
+    <arg name="voxel_leaf_size" default="0.3" />
+
+    <arg name="init_x" default="-10.0" />
+    <arg name="init_y" default="0.0" />
+    <arg name="init_z" default="0.1" />
+
+    <node pkg="co_navi_pkg" name="IMU_Lidar_fusion" type="IMU_Lidar_fusion_ds" output="screen">
+        
+        <param name="icp_max_distance" value="$(arg icp_max_distance)" />
+        <param name="icp_max_iter" value="$(arg icp_max_iter)" />
+        <param name="voxel_leaf_size" value="$(arg voxel_leaf_size)" />
+
+        <param name="init_x" value="$(arg init_x)" />
+        <param name="init_y" value="$(arg init_y)" />
+        <param name="init_z" value="$(arg init_z)" />
+
+    </node>
+</launch>  
