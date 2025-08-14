@@ -1,0 +1,23 @@
+<launch>
+    <arg name="icp_max_distance" default="2.0" />
+    <arg name="icp_max_iter" default="50" />
+    <arg name="voxel_leaf_size" default="0.3" />
+
+    <arg name="drone_id"/>
+    <arg name="init_x"/>
+    <arg name="init_y"/>
+    <arg name="init_z"/>
+
+    <node pkg="co_navi_pkg" name="IMU_Vision_fusion_$(arg drone_id)" type="IMU_Vision_fusion" output="screen">
+        
+        <param name="icp_max_distance" value="$(arg icp_max_distance)" />
+        <param name="icp_max_iter" value="$(arg icp_max_iter)" />
+        <param name="voxel_leaf_size" value="$(arg voxel_leaf_size)" />
+
+        <param name="drone_id" value="$(arg drone_id)" />
+        <param name="init_x" value="$(arg init_x)" />
+        <param name="init_y" value="$(arg init_y)" />
+        <param name="init_z" value="$(arg init_z)" />
+
+    </node>
+</launch>  

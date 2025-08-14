@@ -178,7 +178,7 @@ class Odom2GpsImu:
             acc_est = np.zeros(3)
 
         # ======== 补偿重力：ENU Z 向上 =========
-        acc_est[2] += 9.81
+        acc_est[2] += 9.80665
 
         # ========== 加速度从世界坐标系旋转到机体坐标系 ==========
         # 四元数 q_dyn 是 world -> body

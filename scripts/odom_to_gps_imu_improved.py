@@ -25,6 +25,12 @@ GPS_VEL_STD = 0.25              # [m]   GPS速度1σ噪声
 ACC_LP_ALPHA  = 0.8             # 一阶低通滤波系数 (0~1)，越大越平滑
 IMU_GYR_STD   = 0.005           # [rad/s] 角速度1σ噪声 (降低噪声)
 IMU_ACC_STD   = 0.03            # [m/s²] 线加速度1σ噪声 (降低噪声)
+# IMU_GYR_STD = 0
+# IMU_ACC_STD = 0
+
+# GPS_NOISE_STD = 0            # [m]   GPS位置1σ噪声
+# GPS_VEL_STD = 0             # [m]   GPS速度1σ噪声
+
 ORI_NOISE_STD_DEG = 0.1         # 姿态噪声1σ，单位度 (降低噪声)
 
 ORI_NOISE_STD = np.deg2rad(ORI_NOISE_STD_DEG)
@@ -62,6 +68,7 @@ class ImprovedOdom2GpsImu:
 
         self.pub_gps = rospy.Publisher(f"/drone_{drone_id}/gps", NavSatFix, queue_size=50)
         self.pub_imu = rospy.Publisher(f"/drone_{drone_id}/imu", Imu, queue_size=50)
+        self.pub_imu_pure = rospy.Publisher(f"/drone_{drone_id}/imu_pure", Imu, queue_size=50)
         self.pub_mag = rospy.Publisher(f"/drone_{drone_id}/mag", MagneticField, queue_size=50)
         self.pub_gps_vel = rospy.Publisher(f"/drone_{drone_id}/gps_vel", TwistStamped, queue_size=50)
 
@@ -282,7 +289,7 @@ class ImprovedOdom2GpsImu:
 
         # ========== 加速度处理 ==========
         acc_est = self.estimate_acceleration_improved(vel_now, pos_now, dt)
-        acc_est[2] += 9.81  # 重力补偿
+        acc_est[2] += 9.80665  # 重力补偿
 
         # 转换到机体坐标系
         q_world2body = quaternion_inverse(q_raw_np)
@@ -315,6 +322,26 @@ class ImprovedOdom2GpsImu:
         imu_msg.angular_velocity = Vector3(*omega_noisy)
         imu_msg.linear_acceleration = Vector3(*acc_noisy)
         self.pub_imu.publish(imu_msg)
+        
+        # publish pure imu - 使用无噪声的原始数据
+        imu_msg_pure = Imu()
+        imu_msg_pure.header = odom.header
+        imu_msg_pure.header.frame_id = f"{frame_prefix}/imu_link"
+        imu_msg_pure.orientation.x, imu_msg_pure.orientation.y, \
+        imu_msg_pure.orientation.z, imu_msg_pure.orientation.w = q_raw_np
+        
+        # 使用无噪声的原始角速度和加速度
+        imu_msg_pure.angular_velocity = Vector3(*omega_corrected)  # 无噪声，但有bias补偿
+        imu_msg_pure.linear_acceleration = Vector3(*acc_body_corrected)  # 无噪声，但有bias补偿
+        
+        # 设置协方差矩阵 - 对于pure IMU，协方差应该很小
+        imu_msg_pure.orientation_covariance = [0.001]*3 + [0]*6  # 很小的姿态噪声
+        imu_msg_pure.orientation_covariance[4] = 0.001
+        imu_msg_pure.orientation_covariance[8] = 0.001
+        imu_msg_pure.angular_velocity_covariance = [0.0001]*9  # 很小的角速度噪声
+        imu_msg_pure.linear_acceleration_covariance = [0.001]*9  # 很小的加速度噪声
+        
+        self.pub_imu_pure.publish(imu_msg_pure)
 
         # ========== 磁力计 ==========
         mag_enu = np.array([1.0, 0.0, 0.0])

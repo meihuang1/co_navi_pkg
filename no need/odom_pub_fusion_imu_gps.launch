@@ -8,18 +8,7 @@
   <arg name="init_y"/>
   <arg name="init_z"/>
 
-  <include file="$(find co_navi_pkg)/launch/odom_2_gps_imu.launch">
-    <arg name="drone_id"    value="$(arg drone_id)"/>
-    <arg name="init_x"      value="$(arg init_x)"/>
-    <arg name="init_y"      value="$(arg init_y)"/>
-    <arg name="init_z"      value="$(arg init_z)"/>
-
-    <arg name="origin_lat"  value="$(arg origin_lat)"/>
-    <arg name="origin_lon"  value="$(arg origin_lon)"/>
-    <arg name="origin_alt"  value="$(arg origin_alt)"/>
-  </include>
-
-  <include file="$(find co_navi_pkg)/launch/ekf_fusion_IG.launch">
+  <include file="$(find co_navi_pkg)/launch/low_speed/IMU_GPS/ekf_fusion_IG.launch">
     <arg name="drone_id"    value="$(arg drone_id)"/>
     <arg name="init_x"      value="$(arg init_x)"/>
     <arg name="init_y"      value="$(arg init_y)"/>

@@ -24,22 +24,14 @@ include_directories(
   ${GTSAM_INCLUDE_DIR}
 )
 
-add_executable(eskf_fusion_IG_node src/eskf_fusion_IG_node.cpp)
+add_executable(IMU_GPS_eskf_fusion src/IMU_GPS_eskf_fusion.cpp)
+target_link_libraries(IMU_GPS_eskf_fusion  ${catkin_LIBRARIES})
+add_dependencies(IMU_GPS_eskf_fusion  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(eskf_fusion_IG_node  ${catkin_LIBRARIES})
+add_executable(IMU_Vision_fusion src/IMU_Vision_fusion.cpp)
+target_link_libraries(IMU_Vision_fusion  ${catkin_LIBRARIES} ${PCL_LIBRARIES} gtsam)
+add_dependencies(IMU_Vision_fusion  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})
 
-add_dependencies(eskf_fusion_IG_node  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})
-
-
-add_executable(IMU_Lidar_fusion src/IMU_Lidar_fusion.cpp)
-
-target_link_libraries(IMU_Lidar_fusion  ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-add_dependencies(IMU_Lidar_fusion  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})
-
-
-add_executable(IMU_Lidar_fusion_ds src/IMU_Lidar_fusion_ds.cpp)
-
-target_link_libraries(IMU_Lidar_fusion_ds  ${catkin_LIBRARIES} ${PCL_LIBRARIES} gtsam)
-
-add_dependencies(IMU_Lidar_fusion_ds  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})
+add_executable(IMU_Vision_GPS_fusion src/IMU_Vision_GPS_fusion.cpp)
+target_link_libraries(IMU_Vision_GPS_fusion  ${catkin_LIBRARIES} ${PCL_LIBRARIES} gtsam)
+add_dependencies(IMU_Vision_GPS_fusion  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})

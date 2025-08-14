@@ -67,9 +67,10 @@ public:
         mag_topic_ = "/" + ns + "/mag";
         vgps_topic_ = "/" + ns + "/gps_vel";
 
-        repub_odom_topic_ = "/" + ns + "/odometry/filtered";
-        repub_g_odom_topic_ = "/" + ns + "/global_odom";
-        repub_gpos_topic_ = "/" + ns + "/global_pose";
+        repub_odom_topic_ = "/" + ns + "/odom_fused_IG";
+        repub_g_odom_topic_ = "/" + ns + "/odom_fused_IG_global";
+        repub_gpos_topic_ = "/" + ns + "/pose_fused_IG";
+
         double sigma_g, sigma_a, sigma_p, sigma_m, sigma_vgps;
         nh_.param("sigma_g", sigma_g, 0.005); // rad/s ^½
         nh_.param("sigma_a", sigma_a, 0.05);  // m/s²
@@ -130,7 +131,7 @@ private:
     Mat15 Qd_;
     Mat3 R_gps_;
     Mat3 R_gps_vel_;
-
+    Vec3 ang_;
     // ---------------------------- ZUPT 零偏检测 --------------------------------
 
     bool is_static_ = false;
@@ -191,7 +192,7 @@ private:
         Vec3 acc(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
         Vec3 ang(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
         Quat q_imu(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z);
-
+        ang_ = ang;
         // === 第一步：初始化加速度 bias（静止平均法）===
         if (!init_bias_done_)
         {
@@ -490,6 +491,10 @@ private:
         g_odom.twist.twist.linear.x = v_filtered_.x();
         g_odom.twist.twist.linear.y = v_filtered_.y();
         g_odom.twist.twist.linear.z = v_filtered_.z();
+
+        g_odom.twist.twist.angular.x = ang_.x();
+        g_odom.twist.twist.angular.y = ang_.y();
+        g_odom.twist.twist.angular.z = ang_.z();
 
         pub_global_odom_.publish(g_odom);
 

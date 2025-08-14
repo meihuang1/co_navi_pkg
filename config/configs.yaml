@@ -1,0 +1,22 @@
+map_config:
+  map_size_x: 42.0
+  map_size_y: 30.0
+  map_size_z: 5.0
+
+gravity_z: 9.80665
+
+odom_topic: visual_slam/odom
+
+GPS_config:
+  origin_lat: 30.0
+  origin_lon: 120.0
+  origin_alt: 0.0
+
+drone_config:
+  drone_0:
+    init_x: -20.0
+    init_y: -9.0
+    init_z: 0.1
+    target_x: 20.0
+    target_y: 9.0
+    target_z: 1.0

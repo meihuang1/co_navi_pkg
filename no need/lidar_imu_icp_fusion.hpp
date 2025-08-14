@@ -21,10 +21,12 @@
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <mutex>
+#include <deque>
 
 using gtsam::symbol_shorthand::B; // Bias  (ax,ay,az,gx,gy,gz)
 using gtsam::symbol_shorthand::V; // Vel   (xdot,ydot,zdot)
 using gtsam::symbol_shorthand::X; // Pose3 (x,y,z,r,p,y)
+
 
 class IMULidarFusion
 {
@@ -39,7 +41,6 @@ public:
     cloud_map_sub = nh.subscribe("/map_generator/global_cloud", 1, &IMULidarFusion::mapCallback, this);
 
     // 使用message_filters同步里程计和点云
-    // odom_sub.reset(new message_filters::Subscriber<nav_msgs::Odometry>(nh, "/drone_0/odometry/filtered", 10));
     odom_sub.reset(new message_filters::Subscriber<nav_msgs::Odometry>(nh, "/drone_0/global_odom", 10));
     cloud_sub.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh, "/drone_0_pcl_render_node/cloud", 10));
 
@@ -48,10 +49,10 @@ public:
 
     // 单独订阅IMU用于预测
     imu_sub = nh.subscribe("/drone_0/imu", 100, &IMULidarFusion::imuCallback, this);
-
-    odom_pub = nh.advertise<nav_msgs::Odometry>("/fusion/odom", 10);
+    odom_pub = nh.advertise<nav_msgs::Odometry>("/drone_0/fusion/odom", 10);
     debug_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("/debug/filtered_cloud", 1);
     debug_map_pub = nh.advertise<sensor_msgs::PointCloud2>("/debug/filtered_map_cloud", 1);
+    
     // 初始化参数
     predict_pose = Eigen::Matrix4f::Identity();
     last_transform_ = Eigen::Matrix4f::Identity();
@@ -73,9 +74,35 @@ public:
     // 初始化漂移检测
     accumulated_drift_.setZero();
     last_drift_check_time_ = ros::Time::now();
+    
+    // 初始化改进的IMU积分参数
+    imu_initialized_ = false;
+    imu_position_.setZero();
+    imu_velocity_.setZero();
+    imu_orientation_ = Eigen::Quaternionf::Identity();
+    imu_last_time_ = ros::Time::now();
+    
+    // 初始化IMU参数
+    gravity_vector_ = Eigen::Vector3f(0, 0, -9.80665f);
+    accel_bias_.setZero();
+    gyro_bias_.setZero();
+    
+    // 初始化协方差矩阵
+    accel_covariance_ = Eigen::Matrix3f::Identity() * 0.1f * 0.1f;  // 0.1 m/s²
+    gyro_covariance_ = Eigen::Matrix3f::Identity() * 0.01f * 0.01f;  // 0.01 rad/s
+    
+    // 初始化卡尔曼滤波参数
+    P_ = Eigen::Matrix<float, 9, 9>::Identity() * 0.1f;
+    Q_ = Eigen::Matrix<float, 9, 9>::Identity() * 0.01f;
+    R_ = Eigen::Matrix<float, 6, 6>::Identity() * 0.1f;
+    
+    // 设置过程噪声（位置、速度、姿态）
+    Q_.block<3,3>(0,0) *= 0.01f;  // 位置过程噪声
+    Q_.block<3,3>(3,3) *= 0.1f;   // 速度过程噪声  
+    Q_.block<3,3>(6,6) *= 0.001f; // 姿态过程噪声
   }
 
-private:
+  private:
   ros::NodeHandle nh_;
   ros::Subscriber imu_sub, cloud_map_sub;
   std::unique_ptr<message_filters::Subscriber<nav_msgs::Odometry>> odom_sub;
@@ -115,12 +142,13 @@ private:
   std::mutex optimize_mutex_;
 
   bool debug_model_ = false;
+  
   // 初始化GTSAM
   void initGTSAM()
   {
     // 使用boost::shared_ptr创建参数
     boost::shared_ptr<gtsam::PreintegrationCombinedParams> params =
-        gtsam::PreintegrationCombinedParams::MakeSharedU(9.81);
+        gtsam::PreintegrationCombinedParams::MakeSharedU(9.80665);
 
     params->accelerometerCovariance = gtsam::Matrix33::Identity() * pow(0.1, 2);
     params->gyroscopeCovariance = gtsam::Matrix33::Identity() * pow(0.01, 2);
@@ -145,6 +173,30 @@ private:
   double drift_check_interval_ = 5.0;  // 每5秒检测一次漂移
   double max_drift_threshold_ = 10.0;  // 最大允许漂移10米
   bool drift_detected_ = false;
+  
+  // 改进的IMU积分参数（参考您的Python代码）
+  bool imu_initialized_ = false;
+  Eigen::Vector3f imu_position_;
+  Eigen::Vector3f imu_velocity_;
+  Eigen::Quaternionf imu_orientation_;
+  ros::Time imu_last_time_;
+  
+  // IMU积分参数
+  Eigen::Vector3f gravity_vector_;           // 重力向量估计
+  Eigen::Vector3f accel_bias_;              // 加速度计偏差
+  Eigen::Vector3f gyro_bias_;               // 陀螺仪偏差
+  Eigen::Matrix3f accel_covariance_;        // 加速度计协方差
+  Eigen::Matrix3f gyro_covariance_;         // 陀螺仪协方差
+  
+  // 卡尔曼滤波参数
+  Eigen::Matrix<float, 9, 9> P_;            // 状态协方差矩阵 (位置, 速度, 姿态)
+  Eigen::Matrix<float, 9, 9> Q_;            // 过程噪声协方差
+  Eigen::Matrix<float, 6, 6> R_;            // 测量噪声协方差
+  
+  // 重力估计参数
+  std::deque<Eigen::Vector3f> gravity_buffer_;
+  size_t gravity_buffer_size_ = 100;
+  double gravity_estimation_time_ = 5.0;    // 重力估计时间窗口
 
   void syncCloudOdomCallback(const nav_msgs::Odometry::ConstPtr &odom_msg,
                              const sensor_msgs::PointCloud2::ConstPtr &cloud_msg)
@@ -352,37 +404,62 @@ private:
     double dt = (now - last_time).toSec();
     last_time = now;
 
-    // 读取角速度
-    Eigen::Vector3f gyro(imu_msg->angular_velocity.x,
-                         imu_msg->angular_velocity.y,
-                         imu_msg->angular_velocity.z);
+    // 限制时间步长，防止积分不稳定
+    if (dt > 0.1) dt = 0.1;
+    if (dt < 0.001) dt = 0.001;
 
-    // 用四元数更新当前姿态
-    Eigen::Quaternionf dq = Eigen::Quaternionf(1, 0.5f * gyro.x() * dt, 0.5f * gyro.y() * dt, 0.5f * gyro.z() * dt);
-    current_q = (current_q * dq).normalized();
-
-    // 读取线加速度
-    Eigen::Vector3f acc(imu_msg->linear_acceleration.x,
-                        imu_msg->linear_acceleration.y,
-                        imu_msg->linear_acceleration.z);
-
-    // 转换加速度到世界系
+    // 1. 重力向量估计（在静止状态下）
+    updateGravityEstimation(imu_msg);
+    
+    // 2. 读取并预处理IMU数据
+    Eigen::Vector3f gyro_raw(imu_msg->angular_velocity.x,
+                             imu_msg->angular_velocity.y,
+                             imu_msg->angular_velocity.z);
+    
+    Eigen::Vector3f acc_raw(imu_msg->linear_acceleration.x,
+                            imu_msg->linear_acceleration.y,
+                            imu_msg->linear_acceleration.z);
+    
+    // 3. 应用偏差补偿
+    Eigen::Vector3f gyro = gyro_raw - gyro_bias_;
+    Eigen::Vector3f acc = acc_raw - accel_bias_;
+    
+    // 4. 使用改进的姿态积分（参考您的Python代码）
+    Eigen::Quaternionf new_orientation = integrateQuaternionRK4(current_q, gyro, dt);
+    current_q = new_orientation.normalized();
+    
+    // 5. 重力补偿和加速度积分
     Eigen::Vector3f acc_world = current_q * acc;
-
-    // 去除重力（假设重力方向为Z轴）
-    acc_world -= Eigen::Vector3f(0, 0, 9.81f);
-
-    // 更新速度和位置
-    velocity += acc_world * dt;
-    position += velocity * dt;
-
-    // 保存预测的 pose
+    
+    // 重力补偿：加上重力向量（模拟真实IMU数据）
+    Eigen::Vector3f acc_with_gravity = acc_world + gravity_vector_;
+    
+    // 6. 速度和位置积分（使用梯形积分）
+    Eigen::Vector3f new_velocity = velocity + acc_with_gravity * dt;
+    Eigen::Vector3f new_position = position + 
+                                  0.5f * (velocity + new_velocity) * dt;
+    
+    // 7. 应用Z轴约束（防止过度发散）
+    if (std::abs(new_position.z() - init_z_) > 20.0f) {
+      ROS_WARN("Z轴位置过度发散，重置到初始位置");
+      new_position.z() = init_z_;
+      new_velocity.z() = 0.0f;
+    }
+    
+    // 8. 更新状态
+    velocity = new_velocity;
+    position = new_position;
+    
+    // 9. 偏差自适应估计
+    updateBiasEstimation(acc_raw, gyro_raw, dt);
+    
+    // 10. 保存预测的 pose
     Eigen::Matrix4f pred_pose = Eigen::Matrix4f::Identity();
     pred_pose.block<3, 3>(0, 0) = current_q.toRotationMatrix();
     pred_pose.block<3, 1>(0, 3) = position;
     predict_pose = pred_pose;
 
-    // 2. GTSAM预积分
+    // 11. GTSAM预积分
     double current_time = imu_msg->header.stamp.toSec();
     if (last_imu_time_.toSec() > 0)
     {
@@ -398,7 +475,7 @@ private:
     }
     last_imu_time_ = now;
   }
-
+  
   void checkAndCorrectDrift(const Eigen::Matrix4f &icp_result, const Eigen::Matrix4f &imu_prediction, const ros::Time &stamp)
   {
     // 计算ICP和IMU预测之间的位置差异
@@ -428,6 +505,10 @@ private:
         ROS_WARN("Resetting GTSAM optimizer due to large drift");
         initGTSAM();
         key_index_ = 0;
+        
+        // 清空状态变量，确保下次优化时从干净状态开始
+        graph_.resize(0);
+        initial_values_.clear();
         
         drift_detected_ = true;
       }
@@ -468,17 +549,25 @@ private:
   template <typename Key, typename Value>
   void safeInsert(boost::shared_ptr<gtsam::ISAM2> isam2, gtsam::Values &values, const Key &key, const Value &value)
   {
-    if (!values.exists(key) && !isam2->valueExists(key))
-    {
-      values.insert(key, value);
-      if (debug_model_)
-        std::cout << "[safeInsert] Inserted key: " << gtsam::DefaultKeyFormatter(key) << std::endl;
-    }
-    else
+    // 检查是否已存在该键
+    if (values.exists(key))
     {
       if (debug_model_)
-        std::cout << "[safeInsert] Already exists in ISAM2: " << gtsam::DefaultKeyFormatter(key) << std::endl;
+        std::cout << "[safeInsert] Key already exists in values: " << gtsam::DefaultKeyFormatter(key) << std::endl;
+      return;
     }
+    
+    if (isam2->valueExists(key))
+    {
+      if (debug_model_)
+        std::cout << "[safeInsert] Key already exists in ISAM2: " << gtsam::DefaultKeyFormatter(key) << std::endl;
+      return;
+    }
+    
+    // 安全插入
+    values.insert(key, value);
+    if (debug_model_)
+      std::cout << "[safeInsert] Inserted key: " << gtsam::DefaultKeyFormatter(key) << std::endl;
   }
 
   void optimizeWithGTSAM(const Eigen::Matrix4f &icp_pose, const ros::Time &stamp)
@@ -489,6 +578,10 @@ private:
       // 初始化第一帧的先验约束
       if (key_index_ == 0)
       {
+        // 清空之前的状态，确保没有残留的键值对
+        graph_.resize(0);
+        initial_values_.clear();
+        
         // 位姿先验约束
         gtsam::noiseModel::Diagonal::shared_ptr pose_prior_noise =
             gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 0.1, 0.1, 0.1, 0.1, 0.1, 0.1).finished());
@@ -650,6 +743,154 @@ private:
     mat.block<3, 1>(0, 3) = pose.translation().cast<float>();
     return mat;
   }
+
+  // 重力向量估计
+  void updateGravityEstimation(const sensor_msgs::Imu::ConstPtr &imu_msg)
+  {
+    // 检测静止状态（角速度很小）
+    Eigen::Vector3f gyro(imu_msg->angular_velocity.x,
+                         imu_msg->angular_velocity.y,
+                         imu_msg->angular_velocity.z);
+    
+    if (gyro.norm() < 0.01f) // 静止阈值
+    {
+      Eigen::Vector3f acc(imu_msg->linear_acceleration.x,
+                          imu_msg->linear_acceleration.y,
+                          imu_msg->linear_acceleration.z);
+      
+      // 检查加速度是否合理
+      if (acc.norm() > 5.0f && acc.norm() < 15.0f) {
+        // 转换到世界坐标系
+        Eigen::Quaternionf current_q(1, 0, 0, 0); // 简化处理
+        Eigen::Vector3f acc_world = current_q * acc;
+        
+        // 检查世界坐标系下的加速度是否合理
+        if (acc_world.norm() > 5.0f && acc_world.norm() < 15.0f) {
+          // 添加到缓冲区
+          gravity_buffer_.push_back(acc_world);
+          if (gravity_buffer_.size() > gravity_buffer_size_)
+          {
+            gravity_buffer_.pop_front();
+          }
+          
+          // 计算平均重力向量（需要足够的样本）
+          if (gravity_buffer_.size() > 20)
+          {
+            Eigen::Vector3f avg_gravity = Eigen::Vector3f::Zero();
+            for (const auto& g : gravity_buffer_)
+            {
+              avg_gravity += g;
+            }
+            avg_gravity /= gravity_buffer_.size();
+            
+            // 检查平均重力向量是否合理
+            if (avg_gravity.norm() > 5.0f && avg_gravity.norm() < 15.0f) {
+              // 低通滤波更新重力向量
+              float alpha = 0.005f;
+              Eigen::Vector3f new_gravity = (1.0f - alpha) * gravity_vector_ + alpha * avg_gravity;
+              
+              // 最终检查：确保重力向量指向下方（Z轴负方向）
+              if (new_gravity.z() < -5.0f) {
+                gravity_vector_ = new_gravity;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 如果重力向量仍然不合理，重置为默认值
+    if (gravity_vector_.norm() < 5.0f || gravity_vector_.norm() > 15.0f || gravity_vector_.z() > -5.0f) {
+      gravity_vector_ = Eigen::Vector3f(0, 0, -9.80665f);
+    }
+  }
+    
+  // 四阶龙格库塔姿态积分（参考您的Python代码）
+  Eigen::Quaternionf integrateQuaternionRK4(const Eigen::Quaternionf& q, const Eigen::Vector3f& omega, float dt)
+  {
+    // 使用角速度直接积分，然后归一化
+    Eigen::Vector3f omega_norm = omega.normalized();
+    float angle = omega.norm() * dt;
+    
+    if (angle < 1e-6f) {
+      return q; // 角度太小，直接返回
+    }
+    
+    // 构造增量四元数
+    float sin_half_angle = sin(angle * 0.5f);
+    Eigen::Quaternionf delta_q(cos(angle * 0.5f), 
+                               omega_norm.x() * sin_half_angle,
+                               omega_norm.y() * sin_half_angle,
+                               omega_norm.z() * sin_half_angle);
+    
+    // 应用增量
+    Eigen::Quaternionf result = q * delta_q;
+    return result.normalized();
+  }
+  
+  // 状态预测
+  Eigen::Matrix<float, 9, 1> predictState(const Eigen::Matrix<float, 9, 1>& state, const Eigen::Vector3f& acc, float dt)
+  {
+    Eigen::Matrix<float, 9, 1> predicted = state;
+    
+    // 位置预测
+    predicted.segment<3>(0) += state.segment<3>(3) * dt + 0.5f * acc * dt * dt;
+    
+    // 速度预测
+    predicted.segment<3>(3) += acc * dt;
+    
+    // 姿态预测（已经在姿态积分中处理）
+    
+    return predicted;
+  }
+  
+  // 协方差预测
+  Eigen::Matrix<float, 9, 9> predictCovariance(const Eigen::Matrix<float, 9, 9>& P, const Eigen::Matrix<float, 9, 9>& Q, float dt)
+  {
+    // 简化的协方差预测
+    Eigen::Matrix<float, 9, 9> F = Eigen::Matrix<float, 9, 9>::Identity();
+    F.block<3,3>(0,3) = Eigen::Matrix3f::Identity() * dt;
+    
+    return F * P * F.transpose() + Q;
+  }
+  
+  // 偏差自适应估计
+  void updateBiasEstimation(const Eigen::Vector3f& acc_raw, const Eigen::Vector3f& gyro_raw, float dt)
+  {
+    // 简单的偏差估计（在静止状态下）
+    if (gyro_raw.norm() < 0.01f) // 静止阈值
+    {
+      // 加速度计偏差估计
+      Eigen::Vector3f acc_expected = gravity_vector_;
+      Eigen::Quaternionf current_q(1, 0, 0, 0); // 简化处理
+      Eigen::Vector3f acc_measured = current_q * acc_raw;
+      Eigen::Vector3f acc_error = acc_measured - acc_expected;
+      
+      // 检查误差是否合理，防止异常值影响偏差估计
+      if (acc_error.norm() < 5.0f) {
+        // 低通滤波更新偏差
+        float alpha = 0.0001f;
+        accel_bias_ = (1.0f - alpha) * accel_bias_ + alpha * acc_error;
+        
+        // 限制偏差大小，防止过度补偿
+        if (accel_bias_.norm() > 2.0f) {
+          accel_bias_ = accel_bias_.normalized() * 2.0f;
+        }
+      }
+      
+      // 陀螺仪偏差估计
+      if (gyro_raw.norm() < 0.005f) { // 更严格的静止阈值
+        float gyro_alpha = 0.0001f;
+        gyro_bias_ = (1.0f - gyro_alpha) * gyro_bias_ + gyro_alpha * gyro_raw;
+        
+        // 限制陀螺仪偏差大小
+        if (gyro_bias_.norm() > 0.1f) {
+          gyro_bias_ = gyro_bias_.normalized() * 0.1f;
+        }
+      }
+    }
+  }
+  
   void publishOdometry(const Eigen::Matrix4f &pose)
   {
     nav_msgs::Odometry odom;

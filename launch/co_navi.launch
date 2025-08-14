@@ -1,6 +1,0 @@
-  <launch>
-    <!-- Launch Rviz node -->
-    <include file="$(find ego_planner)/launch/rviz.launch"/>
-    <include file="$(find co_navi_pkg)/launch/map_drones_generator.launch"/>
-    
-  </launch>

@@ -38,9 +38,9 @@
         <param name="init_x" value="$(arg init_x)" />
         <param name="init_y" value="$(arg init_y)" />
         <param name="init_z" value="$(arg init_z)" />
+        
+        <!-- 加载IMU积分配置 -->
+        <rosparam command="load" file="$(find co_navi_pkg)/config/imu_integration_config.yaml" />
     </node>
     
-    <!-- 可选：启动rviz显示 -->
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find co_navi_pkg)/config/fusion_display.rviz" required="false" />
-
 </launch>
