@@ -80,7 +80,8 @@ class PublisherImuGps:
                         msg.pose.pose.orientation.z])
         
         if self.prev_pos is not None and self.prev_quat is not None and self.last_t is not None:
-            dt = t - self.last_t
+            # dt = t - self.last_t
+            dt = 0.01
             if dt > 0:
                 # --- 线加速度 ---
                 vel = (pos - self.prev_pos) / dt

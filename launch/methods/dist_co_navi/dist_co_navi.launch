@@ -1,0 +1,23 @@
+<launch>
+    <arg name="drone_id" value="0"/>
+    <arg name="total_drones" value="5"/>
+    <arg name="mode" value="2d"/>
+    <arg name="noise_std" value="0.001"/>
+    
+    <!-- 距离计算节点 -->
+    <node pkg="co_navi_pkg" name="distance_calculator_$(arg drone_id)" 
+        type="distance_calculator.py">
+        <param name="drone_id" value="$(arg drone_id)" />
+        <param name="total_drones" value="$(arg total_drones)" />
+        <param name="noise_std" value="$(arg noise_std)" />
+    </node>
+
+    <!-- 协同定位节点 -->
+    <node pkg="co_navi_pkg" name="cooperative_localization_$(arg drone_id)" 
+        type="cooperative_localization_node">
+        <param name="drone_id" value="$(arg drone_id)" />
+        <param name="total_drones" value="$(arg total_drones)" />
+        <param name="mode" value="$(arg mode)" />
+
+    </node>
+</launch>

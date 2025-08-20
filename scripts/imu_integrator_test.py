@@ -11,7 +11,7 @@ from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 from utils import GRAVITY_Z, integrate_lin_acc, integrate_vel, integrate_ang_acc, integrate_ang_vel
 
 
-pos_est = np.zeros(3)
+pos_est = np.array([-140,-140,6])
 vel_est = np.zeros(3)
 ang_vel_est = np.zeros(3)
 ang_quat_est = np.array([1,0,0,0])  # [w,x,y,z]
@@ -26,7 +26,9 @@ def imu_callback(msg):
 
     t = msg.header.stamp.to_sec()
     if last_t is not None:
-        dt = t - last_t
+        # dt = t - last_t
+        dt = 0.01
+        
         if dt > 0:
             # --- 获取线加速度并补偿重力 ---
             lin_acc = np.array([msg.linear_acceleration.x,

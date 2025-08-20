@@ -35,3 +35,7 @@ add_dependencies(IMU_Vision_fusion  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catki
 add_executable(IMU_Vision_GPS_fusion src/IMU_Vision_GPS_fusion.cpp)
 target_link_libraries(IMU_Vision_GPS_fusion  ${catkin_LIBRARIES} ${PCL_LIBRARIES} gtsam)
 add_dependencies(IMU_Vision_GPS_fusion  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})
+
+add_executable(cooperative_localization_node src/cooperative_localization_node.cpp)
+target_link_libraries(cooperative_localization_node  ${catkin_LIBRARIES} ${PCL_LIBRARIES} gtsam)
+add_dependencies(cooperative_localization_node  ${${PROJECT_NAME}_EXPORTED_TARGETS}  ${catkin_EXPORTED_TARGETS})

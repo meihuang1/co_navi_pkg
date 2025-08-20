@@ -3,4 +3,5 @@
     <include file="$(find ego_planner)/launch/rviz.launch"/>
     <include file="$(find co_navi_pkg)/launch/low_speed/map_drones_generator.launch"/>
     <include file="$(find co_navi_pkg)/launch/low_speed/drones.launch"/>
+    <include file="$(find co_navi_pkg)/launch/methods/dist_co_navi/dist_co_navi.launch"/>
   </launch>

@@ -1,3 +1,6 @@
+#ifndef VISION_IMU_GPS_FUSION_HPP
+#define VISION_IMU_GPS_FUSION_HPP
+
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>
@@ -16,7 +19,8 @@
 #include <Eigen/Dense>
 
 // ---------- IMU状态结构体 ----------
-struct State {
+struct State
+{
   Eigen::Vector3d pos{Eigen::Vector3d::Zero()};
   Eigen::Vector3d vel{Eigen::Vector3d::Zero()};
   Eigen::Vector3d ang_vel{Eigen::Vector3d::Zero()};
@@ -30,39 +34,46 @@ struct State {
 // ---------- 数学/工具函数 ----------
 
 // 梯形积分：加速度->速度
-inline Eigen::Vector3d integrate_lin_acc(const Eigen::Vector3d& prev_vel,
-                                         const Eigen::Vector3d& lin_acc,
-                                         const Eigen::Vector3d& prev_lin_acc,
-                                         double dt) {
+inline Eigen::Vector3d integrate_lin_acc(const Eigen::Vector3d &prev_vel,
+                                         const Eigen::Vector3d &lin_acc,
+                                         const Eigen::Vector3d &prev_lin_acc,
+                                         double dt)
+{
   return prev_vel + 0.5 * (prev_lin_acc + lin_acc) * dt;
 }
 
 // 速度->位置
-inline Eigen::Vector3d integrate_vel(const Eigen::Vector3d& prev_pos,
-                                     const Eigen::Vector3d& vel,
-                                     double dt) {
+inline Eigen::Vector3d integrate_vel(const Eigen::Vector3d &prev_pos,
+                                     const Eigen::Vector3d &vel,
+                                     double dt)
+{
   return prev_pos + vel * dt;
 }
 
 // 梯形积分：角加速度->角速度
-inline Eigen::Vector3d integrate_ang_acc(const Eigen::Vector3d& prev_ang_vel,
-                                         const Eigen::Vector3d& ang_acc,
-                                         const Eigen::Vector3d& prev_ang_acc,
-                                         double dt) {
+inline Eigen::Vector3d integrate_ang_acc(const Eigen::Vector3d &prev_ang_vel,
+                                         const Eigen::Vector3d &ang_acc,
+                                         const Eigen::Vector3d &prev_ang_acc,
+                                         double dt)
+{
   return prev_ang_vel + 0.5 * (prev_ang_acc + ang_acc) * dt;
 }
 
 // 角速度积分->姿态（四元数）
-inline Eigen::Quaterniond integrate_ang_vel(const Eigen::Quaterniond& prev_quat,
-                                            const Eigen::Vector3d& ang_vel,
-                                            double dt) {
+inline Eigen::Quaterniond integrate_ang_vel(const Eigen::Quaterniond &prev_quat,
+                                            const Eigen::Vector3d &ang_vel,
+                                            double dt)
+{
   double omega_mag = ang_vel.norm();
   Eigen::Quaterniond dq;
-  if (omega_mag * dt < 1e-8) {
+  if (omega_mag * dt < 1e-8)
+  {
     // 小角度近似
     Eigen::Vector3d half = 0.5 * ang_vel * dt;
     dq = Eigen::Quaterniond(1.0, half.x(), half.y(), half.z());
-  } else {
+  }
+  else
+  {
     double theta = omega_mag * dt;
     Eigen::Vector3d axis = ang_vel / omega_mag;
     double c = std::cos(theta / 2.0);
@@ -77,58 +88,58 @@ inline Eigen::Quaterniond integrate_ang_vel(const Eigen::Quaterniond& prev_quat,
 class IMUVisionGPSFusion
 {
 public:
-IMUVisionGPSFusion(ros::NodeHandle &nh) : nh_(nh)
-{
-  // 获取drone_id参数，默认为0
-  nh_.param<int>("drone_id", drone_id_, 0);
+  IMUVisionGPSFusion(ros::NodeHandle &nh) : nh_(nh)
+  {
+    // 获取drone_id参数，默认为0
+    nh_.param<int>("drone_id", drone_id_, 0);
 
-  // 加载ICP参数
-  nh_.param<float>("icp_max_distance", icp_max_distance_, 1.0);
-  nh_.param<int>("icp_max_iter", icp_max_iter_, 40);
-  nh_.param<float>("voxel_leaf_size", voxel_leaf_size_, 0.25);
+    // 加载ICP参数
+    nh_.param<float>("icp_max_distance", icp_max_distance_, 1.0);
+    nh_.param<int>("icp_max_iter", icp_max_iter_, 40);
+    nh_.param<float>("voxel_leaf_size", voxel_leaf_size_, 0.25);
 
-  nh_.param<float>("init_x", init_x_, 0.0);
-  nh_.param<float>("init_y", init_y_, 0.0);
-  nh_.param<float>("init_z", init_z_, 0.0);
-  // 构建话题前缀
-  std::string topic_prefix = "/drone_" + std::to_string(drone_id_);
-  
-  // 初始化点云
-  map_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
-  map_with_normals.reset(new pcl::PointCloud<pcl::PointNormal>);
+    nh_.param<float>("init_x", init_x_, 0.0);
+    nh_.param<float>("init_y", init_y_, 0.0);
+    nh_.param<float>("init_z", init_z_, 0.0);
+    // 构建话题前缀
+    std::string topic_prefix = "/drone_" + std::to_string(drone_id_);
 
-  // 订阅全局地图点云（不加前缀）
-  cloud_map_sub = nh.subscribe("/map_generator/global_cloud", 1, &IMUVisionGPSFusion::mapCallback, this);
+    // 初始化点云
+    map_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    map_with_normals.reset(new pcl::PointCloud<pcl::PointNormal>);
 
-  // 使用message_filters同步里程计和点云（加前缀）
-  odom_sub.reset(new message_filters::Subscriber<nav_msgs::Odometry>(nh, topic_prefix + "/odom_fused_IG_global", 10));
-  cloud_sub.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh, topic_prefix + "_pcl_render_node/cloud", 10));
+    // 订阅全局地图点云（不加前缀）
+    cloud_map_sub = nh.subscribe("/map_generator/global_cloud", 1, &IMUVisionGPSFusion::mapCallback, this);
 
-  sync.reset(new message_filters::Synchronizer<SyncPolicy>(SyncPolicy(10), *odom_sub, *cloud_sub));
-  sync->registerCallback(boost::bind(&IMUVisionGPSFusion::syncCloudOdomCallback, this, _1, _2));
+    // 使用message_filters同步里程计和点云（加前缀）
+    odom_sub.reset(new message_filters::Subscriber<nav_msgs::Odometry>(nh, topic_prefix + "/odom_fused_IG_global", 10));
+    cloud_sub.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh, topic_prefix + "_pcl_render_node/cloud", 10));
 
-  // 订阅IMU用于预测（加前缀）
-  imu_sub = nh.subscribe(topic_prefix + "/imu", 100, &IMUVisionGPSFusion::imuCallback, this);
-  
-  // 发布器（加前缀）
-  odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/odom_fused_IGV", 10);
-  imu_odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/imu_integrator_res2", 10);
-  
-  debug_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix + "/debug/filtered_cloud", 1);
-  debug_map_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix + "/debug/filtered_map_cloud", 1);
-  
-  // 初始化参数
-  predict_pose = Eigen::Matrix4f::Identity();
-  predict_pose.block<3, 1>(0, 3) = Eigen::Vector3f(init_x_, init_y_, init_z_);
-  last_transform = Eigen::Matrix4f::Identity();
-  map_ready = false;
+    sync.reset(new message_filters::Synchronizer<SyncPolicy>(SyncPolicy(10), *odom_sub, *cloud_sub));
+    sync->registerCallback(boost::bind(&IMUVisionGPSFusion::syncCloudOdomCallback, this, _1, _2));
 
-  // 初始化重力补偿参数
-  gravity_z_ = 9.80665;
-  compensate_gravity_ = true;
-  
-  ROS_INFO("IMU-LiDAR Fusion initialized for drone_%d", drone_id_);
-}
+    // 订阅IMU用于预测（加前缀）
+    imu_sub = nh.subscribe(topic_prefix + "/imu", 100, &IMUVisionGPSFusion::imuCallback, this);
+
+    // 发布器（加前缀）
+    odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/odom_fused_IGV", 10);
+    imu_odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/imu_integrator_res2", 10);
+
+    debug_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix + "/debug/filtered_cloud", 1);
+    debug_map_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix + "/debug/filtered_map_cloud", 1);
+
+    // 初始化参数
+    predict_pose = Eigen::Matrix4f::Identity();
+    predict_pose.block<3, 1>(0, 3) = Eigen::Vector3f(init_x_, init_y_, init_z_);
+    last_transform = Eigen::Matrix4f::Identity();
+    map_ready = false;
+
+    // 初始化重力补偿参数
+    gravity_z_ = 9.80665;
+    compensate_gravity_ = true;
+
+    ROS_INFO("IMU-LiDAR Fusion initialized for drone_%d", drone_id_);
+  }
 
 private:
   ros::NodeHandle nh_;
@@ -136,7 +147,7 @@ private:
   std::unique_ptr<message_filters::Subscriber<nav_msgs::Odometry>> odom_sub;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub;
   ros::Publisher odom_pub, imu_odom_pub, debug_cloud_pub, debug_map_pub;
-  
+
   int drone_id_;
   // 定义同步策略
   typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, sensor_msgs::PointCloud2> SyncPolicy;
@@ -164,70 +175,74 @@ private:
 
   // ---------- 主要回调函数 ----------
   void syncCloudOdomCallback(const nav_msgs::Odometry::ConstPtr &odom_msg,
-    const sensor_msgs::PointCloud2::ConstPtr &cloud_msg)
+                             const sensor_msgs::PointCloud2::ConstPtr &cloud_msg)
   {
-  if (!map_ready) {
-  ROS_WARN_THROTTLE(1.0, "Map not ready, skipping ICP");
-  return;
+    if (!map_ready)
+    {
+      ROS_WARN_THROTTLE(1.0, "Map not ready, skipping ICP");
+      return;
+    }
+
+    // 转换点云
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::fromROSMsg(*cloud_msg, *input);
+
+    if (input->empty())
+    {
+      ROS_WARN("Empty input cloud");
+      return;
+    }
+
+    // 预处理点云
+    pcl::PointCloud<pcl::PointXYZ>::Ptr filtered = preprocessCloudUnified(input, voxel_leaf_size_, false);
+
+    // 发布调试点云
+    publishDebugClouds(filtered);
+
+    // 将odom_msg转换为Eigen::Matrix4f作为初始猜测
+    Eigen::Matrix4f init_guess = Eigen::Matrix4f::Identity();
+
+    // 设置位置
+    init_guess.block<3, 1>(0, 3) = Eigen::Vector3f(
+        odom_msg->pose.pose.position.x,
+        odom_msg->pose.pose.position.y,
+        odom_msg->pose.pose.position.z);
+
+    // 设置姿态（四元数转旋转矩阵）
+    Eigen::Quaternionf q(
+        odom_msg->pose.pose.orientation.w,
+        odom_msg->pose.pose.orientation.x,
+        odom_msg->pose.pose.orientation.y,
+        odom_msg->pose.pose.orientation.z);
+    q.normalize();
+    init_guess.block<3, 3>(0, 0) = q.toRotationMatrix();
+
+    // 执行ICP配准
+    Eigen::Matrix4f icp_result = runICP(filtered, init_guess);
+
+    // 智能选择最终位姿（现在使用odom作为参考）
+    Eigen::Matrix4f final_pose = selectFinalPose(init_guess, icp_result);
+
+    // 发布最终结果
+    publishOdometry(final_pose);
+
+    // 更新状态
+    updateState(final_pose);
   }
 
-  // 转换点云
-  pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::fromROSMsg(*cloud_msg, *input);
-
-  if (input->empty()) {
-  ROS_WARN("Empty input cloud");
-  return;
-  }
-
-  // 预处理点云
-  pcl::PointCloud<pcl::PointXYZ>::Ptr filtered = preprocessCloudUnified(input, voxel_leaf_size_, false);
-
-  // 发布调试点云
-  publishDebugClouds(filtered);
-
-  // 将odom_msg转换为Eigen::Matrix4f作为初始猜测
-  Eigen::Matrix4f init_guess = Eigen::Matrix4f::Identity();
-
-  // 设置位置
-  init_guess.block<3, 1>(0, 3) = Eigen::Vector3f(
-  odom_msg->pose.pose.position.x,
-  odom_msg->pose.pose.position.y,
-  odom_msg->pose.pose.position.z
-  );
-
-  // 设置姿态（四元数转旋转矩阵）
-  Eigen::Quaternionf q(
-  odom_msg->pose.pose.orientation.w,
-  odom_msg->pose.pose.orientation.x,
-  odom_msg->pose.pose.orientation.y,
-  odom_msg->pose.pose.orientation.z
-  );
-  q.normalize();
-  init_guess.block<3, 3>(0, 0) = q.toRotationMatrix();
-
-  // 执行ICP配准
-  Eigen::Matrix4f icp_result = runICP(filtered, init_guess);
-
-  // 智能选择最终位姿（现在使用odom作为参考）
-  Eigen::Matrix4f final_pose = selectFinalPose(init_guess, icp_result);
-
-  // 发布最终结果
-  publishOdometry(final_pose);
-
-  // 更新状态
-  updateState(final_pose);
-  }
-
-  void imuCallback(const sensor_msgs::Imu::ConstPtr& msg) {
+  void imuCallback(const sensor_msgs::Imu::ConstPtr &msg)
+  {
     const ros::Time t = msg->header.stamp;
-    if (!state_.has_prev) {
+    if (!state_.has_prev)
+    {
       initializeState(msg);
       return;
     }
 
-    const double dt = (t - state_.last_t).toSec();
-    if (dt <= 0.0) return;
+    // const double dt = (t - state_.last_t).toSec();
+    const double dt = 0.01;
+    if (dt <= 0.0)
+      return;
 
     // 处理IMU数据
     processIMUData(msg, dt);
@@ -243,35 +258,41 @@ private:
 
   // ---------- 辅助函数 ----------
 
-  void initializeState(const sensor_msgs::Imu::ConstPtr& msg) {
-    const auto& q = msg->orientation;
-    if (!(std::isnan(q.w) || std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z))) {
+  void initializeState(const sensor_msgs::Imu::ConstPtr &msg)
+  {
+    const auto &q = msg->orientation;
+    if (!(std::isnan(q.w) || std::isnan(q.x) || std::isnan(q.y) || std::isnan(q.z)))
+    {
       state_.quat = Eigen::Quaterniond(q.w, q.x, q.y, q.z);
       state_.quat.normalize();
-    } else {
+    }
+    else
+    {
       state_.quat.setIdentity();
     }
-    
+
     // 使用参数化的初始位置
     state_.pos = Eigen::Vector3d(init_x_, init_y_, init_z_);
-    
+
     state_.prev_lin_acc.setZero();
     state_.prev_ang_acc.setZero();
     state_.last_t = msg->header.stamp;
     state_.has_prev = true;
-    
+
     // 同时更新predict_pose
     updatePredictPose();
-    
+
     ROS_INFO("Initialized state at position (%.2f, %.2f, %.2f)", init_x_, init_y_, init_z_);
   }
 
-  void processIMUData(const sensor_msgs::Imu::ConstPtr& msg, double dt) {
+  void processIMUData(const sensor_msgs::Imu::ConstPtr &msg, double dt)
+  {
     // 读取线加速度并补偿重力
     Eigen::Vector3d lin_acc(msg->linear_acceleration.x,
                             msg->linear_acceleration.y,
                             msg->linear_acceleration.z);
-    if (compensate_gravity_) {
+    if (compensate_gravity_)
+    {
       lin_acc.z() -= gravity_z_;
     }
 
@@ -291,12 +312,14 @@ private:
     state_.quat = integrate_ang_vel(state_.quat, state_.ang_vel, dt);
   }
 
-  void updatePredictPose() {
+  void updatePredictPose()
+  {
     predict_pose.block<3, 1>(0, 3) = state_.pos.cast<float>();
     predict_pose.block<3, 3>(0, 0) = state_.quat.toRotationMatrix().cast<float>();
   }
 
-  void publishIMUOdometry(const sensor_msgs::Imu::ConstPtr& msg) {
+  void publishIMUOdometry(const sensor_msgs::Imu::ConstPtr &msg)
+  {
     nav_msgs::Odometry odom;
     odom.header.stamp = msg->header.stamp;
     odom.header.frame_id = "world";
@@ -320,7 +343,8 @@ private:
     imu_odom_pub.publish(odom);
   }
 
-  void publishDebugClouds(const pcl::PointCloud<pcl::PointXYZ>::Ptr& filtered) {
+  void publishDebugClouds(const pcl::PointCloud<pcl::PointXYZ>::Ptr &filtered)
+  {
     sensor_msgs::PointCloud2 debug_msg;
     pcl::toROSMsg(*filtered, debug_msg);
     debug_msg.header.frame_id = "base_link";
@@ -332,7 +356,8 @@ private:
     // debug_map_pub.publish(ros_map_cloud);
   }
 
-  Eigen::Matrix4f selectFinalPose(const Eigen::Matrix4f& imu_prediction, const Eigen::Matrix4f& icp_result) {
+  Eigen::Matrix4f selectFinalPose(const Eigen::Matrix4f &imu_prediction, const Eigen::Matrix4f &icp_result)
+  {
     // 比较ICP结果与IMU预测的差异
     Eigen::Vector3f imu_pos = imu_prediction.block<3, 1>(0, 3);
     Eigen::Vector3f icp_pos = icp_result.block<3, 1>(0, 3);
@@ -346,25 +371,29 @@ private:
     float position_threshold = 2.0f;
     float orientation_threshold = 0.3f;
 
-    if (position_diff < position_threshold && orientation_diff < orientation_threshold) {
-      ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP", 
+    if (position_diff < position_threshold && orientation_diff < orientation_threshold)
+    {
+      ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
                position_diff, orientation_diff);
       return icp_result;
-    } else {
-      ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU", 
+    }
+    else
+    {
+      ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
                position_diff, orientation_diff);
       return imu_prediction;
     }
   }
 
-  void updateState(const Eigen::Matrix4f& final_pose) {
+  void updateState(const Eigen::Matrix4f &final_pose)
+  {
     last_transform = final_pose;
     predict_pose = final_pose;
-    
+
     Eigen::Vector3f position = final_pose.block<3, 1>(0, 3);
     Eigen::Quaternionf orientation(final_pose.block<3, 3>(0, 0));
-    
-    ROS_INFO("Final pose: pos=(%.2f, %.2f, %.2f)", 
+
+    ROS_INFO("Final pose: pos=(%.2f, %.2f, %.2f)",
              position.x(), position.y(), position.z());
   }
 
@@ -377,7 +406,8 @@ private:
   {
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered(new pcl::PointCloud<pcl::PointXYZ>(*input));
 
-    if (apply_statistical_filter) {
+    if (apply_statistical_filter)
+    {
       pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
       sor.setInputCloud(filtered);
       sor.setMeanK(50);
@@ -422,8 +452,9 @@ private:
     pcl::PointCloud<pcl::PointNormal> aligned;
     icp.align(aligned, init_guess);
 
-    if (!icp.hasConverged()) {
-      ROS_WARN("ICP did not converge, using odometry pose");
+    if (!icp.hasConverged())
+    {
+      // ROS_WARN("ICP did not converge, using odometry pose");
       return init_guess;
     }
 
@@ -432,8 +463,10 @@ private:
 
     // 检查ICP结果是否合理
     float translation_diff = (icp.getFinalTransformation().block<3, 1>(0, 3) -
-                              init_guess.block<3, 1>(0, 3)).norm();
-    if (translation_diff > 2.0) {
+                              init_guess.block<3, 1>(0, 3))
+                                 .norm();
+    if (translation_diff > 2.0)
+    {
       ROS_WARN("Large ICP deviation (%.2fm), using odometry pose", translation_diff);
       return init_guess;
     }
@@ -488,3 +521,5 @@ private:
     odom_pub.publish(odom);
   }
 };
+
+#endif

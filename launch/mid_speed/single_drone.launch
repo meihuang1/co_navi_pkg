@@ -1,37 +1,63 @@
 <launch>    
     <!-- 定义参数，从配置文件读取 -->
-    <arg name="map_size_x" value="42.0"/>
-    <arg name="map_size_y" value="30.0"/>
-    <arg name="map_size_z" value="5.0"/>
-    <arg name="odom_topic" value="visual_slam/odom"/>
-    
     <arg name="origin_lat" value="30.0"/>
     <arg name="origin_lon" value="120.0"/>
     <arg name="origin_alt" value="0.0"/>
 
+    <arg name="map_size_x"/>
+    <arg name="map_size_y"/>
+    <arg name="map_size_z"/>
+    <arg name="odom_topic" value="visual_slam/odom"/>
+
     <arg name="drone_id"/>
-    <arg name="target_x"/>
-    <arg name="target_y"/>
-    <arg name="target_z"/>
+
     <arg name="init_x"/>
     <arg name="init_y"/>
     <arg name="init_z"/>
+    
+
+    <arg name="point_num"/>
+    <arg name="point0_x"/>
+    <arg name="point0_y"/>
+    <arg name="point0_z"/>
+    <arg name="point1_x"/>
+    <arg name="point1_y"/>
+    <arg name="point1_z"/>
+    <arg name="point2_x"/>
+    <arg name="point2_y"/>
+    <arg name="point2_z"/>
+    <arg name="point3_x"/>
+    <arg name="point3_y"/>
+    <arg name="point3_z"/>
+
 
     <!-- drone x generator -->
     <!-- planner run in sim --> 
-    <include file="$(find ego_planner)/launch/run_in_sim.launch">
+    <include file="$(find co_navi_pkg)/launch/mid_speed/run_files/run_in_sim.launch">
         <arg name="drone_id"    value="$(arg drone_id)"/>
         <arg name="init_x"      value="$(arg init_x)"/>
         <arg name="init_y"      value="$(arg init_y)"/>
         <arg name="init_z"      value="$(arg init_z)"/>
-        <arg name="target_x"    value="$(arg target_x)"/>
-        <arg name="target_y"    value="$(arg target_y)"/>
-        <arg name="target_z"    value="$(arg target_z)"/>
 
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
         <arg name="odom_topic"  value="$(arg odom_topic)"/>
+
+        <arg name="point_num"   value="$(arg point_num)"/>
+        <arg name="point0_x"    value="$(arg point0_x)"/>
+        <arg name="point0_y"    value="$(arg point0_y)"/>
+        <arg name="point0_z"    value="$(arg point0_z)"/>
+        <arg name="point1_x"    value="$(arg point1_x)"/>
+        <arg name="point1_y"    value="$(arg point1_y)"/>
+        <arg name="point1_z"    value="$(arg point1_z)"/>
+        <arg name="point2_x"    value="$(arg point2_x)"/>
+        <arg name="point2_y"    value="$(arg point2_y)"/>
+        <arg name="point2_z"    value="$(arg point2_z)"/>
+        <arg name="point3_x"    value="$(arg point3_x)"/>
+        <arg name="point3_y"    value="$(arg point3_y)"/>
+        <arg name="point3_z"    value="$(arg point3_z)"/>
+
     </include>
 
     <!-- gps imu message generator -->

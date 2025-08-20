@@ -9,7 +9,7 @@
     <arg name="init_z"/>
     
     <!-- ESKF 节点 -->
-    <node pkg="co_navi_pkg" type="IMU_GPS_eskf_fusion" name="IMU_GPS_fusion_$(arg drone_id)" output="screen">
+    <node pkg="co_navi_pkg" type="IMU_GPS_eskf_fusion" name="IMU_GPS_fusion_$(arg drone_id)">
         <param name="drone_id" value="$(arg drone_id)"/>
         <!-- 噪声参数 -->     
         <param name="sigma_g" value="0.005" />

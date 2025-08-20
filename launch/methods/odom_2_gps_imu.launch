@@ -8,8 +8,7 @@
   <arg name="init_z"/>
   
   <!-- odom to gps imu launch -->
-  <node pkg="co_navi_pkg" type="imu_gps_publisher.py"
-        name="odom_to_gps_imu_improved_$(arg drone_id)"  output="screen">
+  <node pkg="co_navi_pkg" type="imu_gps_publisher.py" name="odom_to_gps_imu_improved_$(arg drone_id)">
     <param name="drone_id" value="$(arg drone_id)"/>
     <param name="origin_lat" value="$(arg origin_lat)"/>
     <param name="origin_lon" value="$(arg origin_lon)"/>
