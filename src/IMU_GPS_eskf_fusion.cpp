@@ -464,7 +464,7 @@ private:
 
         pose.pose.position.x = p_w_.x() + init_x_;
         pose.pose.position.y = p_w_.y() + init_y_;
-        pose.pose.position.z = p_w_.z() + init_z_;
+        pose.pose.position.z = p_w_.z();
 
         // === 姿态 ===
         pose.pose.orientation.x = q_wb_.x();
@@ -482,7 +482,7 @@ private:
 
         g_odom.pose.pose.position.x = p_w_.x() + init_x_;
         g_odom.pose.pose.position.y = p_w_.y() + init_y_;
-        g_odom.pose.pose.position.z = p_w_.z() + init_z_;
+        g_odom.pose.pose.position.z = p_w_.z();
         g_odom.pose.pose.orientation.x = q_wb_.x();
         g_odom.pose.pose.orientation.y = q_wb_.y();
         g_odom.pose.pose.orientation.z = q_wb_.z();

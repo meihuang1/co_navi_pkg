@@ -1,0 +1,39 @@
+<launch>    
+    <arg name="map_size_x"/>
+    <arg name="map_size_y"/>
+    <arg name="map_size_z"/>
+    
+    <!-- 定义参数，从配置文件读取 -->
+    <include file="$(find co_navi_pkg)/launch/Heterogeneous/single_car.launch">
+        <arg name="drone_id"    value="5"/>
+        <arg name="init_x"      value="-22.0"/>
+        <arg name="init_y"      value="-3.0"/>
+        <arg name="init_z"      value="0.1"/>
+        <arg name="target_x"    value="22.0"/>
+        <arg name="target_y"    value="-3.0"/>
+        <arg name="target_z"    value="0.1"/>
+
+        <arg name="map_size_x"  value="46.0"/>
+        <arg name="map_size_y"  value="$(arg map_size_y)"/>
+        <arg name="map_size_z"  value="$(arg map_size_z)"/>
+
+    </include>
+
+    <!-- 定义参数，从配置文件读取 -->
+    <include file="$(find co_navi_pkg)/launch/Heterogeneous/single_car.launch">
+        <arg name="drone_id"    value="6"/>
+        <arg name="init_x"      value="-22.0"/>
+        <arg name="init_y"      value="3.0"/>
+        <arg name="init_z"      value="0.1"/>
+        <arg name="target_x"    value="22.0"/>
+        <arg name="target_y"    value="3.0"/>
+        <arg name="target_z"    value="0.1"/>
+
+        <arg name="map_size_x"  value="46.0"/>
+        <arg name="map_size_y"  value="$(arg map_size_y)"/>
+        <arg name="map_size_z"  value="$(arg map_size_z)"/>
+
+    </include>
+
+
+</launch>

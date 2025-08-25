@@ -17,9 +17,9 @@
     <arg name="init_y"/>
     <arg name="init_z"/>
 
-    <!-- drone x generator -->
+    <!-- car x generator -->
     <!-- planner run in sim --> 
-    <include file="$(find ego_planner)/launch/run_in_sim.launch">
+    <include file="$(find co_navi_pkg)/launch/Heterogeneous/run_file/run_in_sim.launch">
         <arg name="drone_id"    value="$(arg drone_id)"/>
         <arg name="init_x"      value="$(arg init_x)"/>
         <arg name="init_y"      value="$(arg init_y)"/>

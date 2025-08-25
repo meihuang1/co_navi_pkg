@@ -1,9 +1,10 @@
 <launch>
     <arg name="drone_id" value="0"/>
-    <arg name="total_drones" value="5"/>
-    <arg name="mode" value="2d"/>
     <arg name="noise_std" value="0.001"/>
     
+    <arg name="total_drones"/>
+    <arg name="mode"/>
+
     <!-- 距离计算节点 -->
     <node pkg="co_navi_pkg" name="distance_calculator_$(arg drone_id)" 
         type="distance_calculator.py">

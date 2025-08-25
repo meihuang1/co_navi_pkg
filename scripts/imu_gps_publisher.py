@@ -14,16 +14,45 @@ prev_vel = np.zeros(3)
 prev_quat = None
 prev_ang_vel = np.zeros(3)
 last_t = None
-# IMU 噪声
+
+# IMU 噪声参数
 ang_acc_noise_std = 0.001
 lin_acc_noise_std = 0.01
 ori_noise_std = 0.001
+
+# 噪声缓存，用于生成零均值积分噪声
+noise_buffer_size = 100
+lin_acc_noise_buffer = []
+ang_acc_noise_buffer = []
 
 # GPS 噪声
 GPS_NOISE_STD = 0.05
 GPS_VEL_STD = 0.1
 gps_var = GPS_NOISE_STD**2
 
+def generate_zero_mean_integral_noise(length, amplitude):
+    """
+    生成均值为0且积分为0的随机噪声
+    通过确保序列的和为0来实现积分为0
+    """
+    # 生成随机数
+    noise = np.random.normal(0, amplitude, length)
+    
+    # 调整使得和为0（积分为0）
+    noise_sum = np.sum(noise)
+    noise -= noise_sum / length
+    
+    return noise
+
+def get_noise_sample(noise_buffer, amplitude, buffer_size=100):
+    """
+    从噪声缓存中获取一个噪声样本，如果缓存为空则重新生成
+    """
+    if len(noise_buffer) == 0:
+        # 重新生成噪声缓存
+        noise_buffer.extend(generate_zero_mean_integral_noise(buffer_size, amplitude))
+    
+    return noise_buffer.pop(0)
 
 class PublisherImuGps:
     def __init__(self):
@@ -87,13 +116,14 @@ class PublisherImuGps:
                 vel = (pos - self.prev_pos) / dt
                 lin_acc = (vel - self.prev_vel) / dt
                 lin_acc[2] += GRAVITY_Z
-                lin_acc_noisy = lin_acc + np.random.normal(0, lin_acc_noise_std, 3)
-
+                # lin_acc_noisy = lin_acc + get_noise_sample(lin_acc_noise_buffer, lin_acc_noise_std, noise_buffer_size)
+                lin_acc_noisy = lin_acc + lin_acc_noise_std * np.sin(np.random.normal(0, lin_acc_noise_std, 3))
                 # --- 角加速度 ---
                 ang_vel = quat_to_ang_vel(self.prev_quat, quat, dt)
                 ang_acc = (ang_vel - self.prev_ang_vel) / dt
-                ang_acc_noisy = ang_acc + np.random.normal(0, ang_acc_noise_std, 3)
-
+                # ang_acc_noisy = ang_acc + get_noise_sample(ang_acc_noise_buffer, ang_acc_noise_std, noise_buffer_size)
+                ang_acc_noisy = ang_acc + ang_acc_noise_std * np.sin(np.random.normal(0, ang_acc_noise_std, 3))
+                
                 # --- 给 orientation 加噪声 ---
                 # 1. 转成欧拉角
                 euler = np.array(tf_trans.euler_from_quaternion(quat))
@@ -145,11 +175,11 @@ class PublisherImuGps:
         # ENU加初始化偏移
         x_e = odom.pose.pose.position.x + self.init_x
         y_n = odom.pose.pose.position.y + self.init_y
-        z_u = odom.pose.pose.position.z + self.init_z
+        z_u = odom.pose.pose.position.z
 
         # ENU -> 经纬度转换
         lon, lat = self.trans_enu2lla.transform(x_e, y_n)
-        alt = z_u + self.alt0
+        alt = z_u
 
         # GPS噪声（单位换算）
         gps_noise = np.random.randn(3) * GPS_NOISE_STD

@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <boost/bind.hpp>
+#include <deque>
 
 class CooperativeLocalization
 {
@@ -60,8 +61,8 @@ public:
             topic_prefix + "/imu_integrator_res", 1,
             &CooperativeLocalization::imuCallback, this);
 
-        fused_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>(
-            topic_prefix + "/cooperative_fused_pose", 10);
+        fused_odom_pub_ = nh_.advertise<nav_msgs::Odometry>(
+            topic_prefix + "/odom_fused_cooperative_pose", 10);
 
         ROS_INFO("Cooperative Localization initialized for drone_%d in %s mode", drone_id_, mode_.c_str());
     }
@@ -76,7 +77,7 @@ private:
     std::vector<ros::Subscriber> distance2d_subs_;
     std::vector<ros::Subscriber> distance3d_subs_;
     ros::Subscriber imu_sub_;
-    ros::Publisher fused_pose_pub_;
+    ros::Publisher fused_odom_pub_;
 
     std::vector<Eigen::Vector3d> drone_positions_;
     std::vector<double> distances2d_;
@@ -307,9 +308,11 @@ private:
         fused_pose_pub_.publish(msg);
 
         if (mode_ == "3d")
-            ROS_INFO("Published 3D fused pose: (%.3f, %.3f, %.3f)", pos.x(), pos.y(), pos.z());
+            ROS_INFO_THROTTLE(1.0, "Published 3D fused odom: (%.3f, %.3f, %.3f)", 
+                     pos_avg.x(), pos_avg.y(), pos_avg.z());
         else
-            ROS_INFO("Published 2D fused pose: (%.3f, %.3f, %.3f)", pos.x(), pos.y(), pos.z());
+            ROS_INFO_THROTTLE(1.0, "Published 2D fused odom: (%.3f, %.3f, %.3f)", 
+                     pos_avg.x(), pos_avg.y(), pos_avg.z());
     }
 };
 

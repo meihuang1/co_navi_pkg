@@ -99,4 +99,8 @@
       <arg name="init_z"      value="$(arg init_z)"/>
     </include>
 
+    <node pkg="co_navi_pkg" type="error_analysis.py" name="error_analysis_$(arg drone_id)">
+        <param name="drone_id" value="$(arg drone_id)"/>
+    </node>
+
 </launch>
