@@ -27,7 +27,7 @@ ang_acc_noise_buffer = []
 
 # GPS 噪声
 GPS_NOISE_STD = 0.05
-GPS_VEL_STD = 0.1
+GPS_VEL_STD = 0.01
 gps_var = GPS_NOISE_STD**2
 
 def generate_zero_mean_integral_noise(length, amplitude):
@@ -159,12 +159,13 @@ class PublisherImuGps:
                                                         0, lin_acc_noise_std**2, 0,
                                                         0, 0, lin_acc_noise_std**2]
 
-                self.pub_imu.publish(imu_msg)
+
 
                 self.prev_vel = vel
                 self.prev_ang_vel = ang_vel
 
                 # 发布 GPS 和 GPS 速度
+                self.pub_imu.publish(imu_msg)
                 self.publish_gps_from_odom(msg)
 
         self.prev_pos = pos

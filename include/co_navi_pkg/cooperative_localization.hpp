@@ -305,14 +305,14 @@ private:
         msg.pose.position.y = pos.y();
         msg.pose.position.z = pos.z();
         msg.pose.orientation.w = 1.0;
-        fused_pose_pub_.publish(msg);
+        fused_odom_pub_.publish(msg);
 
         if (mode_ == "3d")
             ROS_INFO_THROTTLE(1.0, "Published 3D fused odom: (%.3f, %.3f, %.3f)", 
-                     pos_avg.x(), pos_avg.y(), pos_avg.z());
+                pos.x(), pos.y(), pos.z());
         else
             ROS_INFO_THROTTLE(1.0, "Published 2D fused odom: (%.3f, %.3f, %.3f)", 
-                     pos_avg.x(), pos_avg.y(), pos_avg.z());
+                pos.x(), pos.y(), pos.z());
     }
 };
 

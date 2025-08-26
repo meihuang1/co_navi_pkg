@@ -188,11 +188,11 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*cloud_msg, *input);
 
-    if (input->empty())
-    {
-      ROS_WARN("Empty input cloud");
-      return;
-    }
+    // if (input->empty())
+    // {
+    //   ROS_WARN("Empty input cloud");
+    //   return;
+    // }
 
     // 预处理点云
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered = preprocessCloudUnified(input, voxel_leaf_size_, false);

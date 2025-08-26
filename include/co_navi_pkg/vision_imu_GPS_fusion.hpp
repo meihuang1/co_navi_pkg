@@ -187,11 +187,11 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*cloud_msg, *input);
 
-    if (input->empty())
-    {
-      ROS_WARN("Empty input cloud");
-      return;
-    }
+    // if (input->empty())
+    // {
+    //   ROS_WARN("Empty input cloud");
+    //   return;
+    // }
 
     // 预处理点云
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered = preprocessCloudUnified(input, voxel_leaf_size_, false);
@@ -373,14 +373,14 @@ private:
 
     if (position_diff < position_threshold && orientation_diff < orientation_threshold)
     {
-      ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
-               position_diff, orientation_diff);
+      // ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
+      //          position_diff, orientation_diff);
       return icp_result;
     }
     else
     {
-      ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
-               position_diff, orientation_diff);
+      // ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
+      //          position_diff, orientation_diff);
       return imu_prediction;
     }
   }
@@ -458,8 +458,8 @@ private:
       return init_guess;
     }
 
-    ROS_INFO_STREAM("ICP fitness: " << icp.getFitnessScore()
-                                    << ", iterations: " << icp.getMaximumIterations());
+    // ROS_INFO_STREAM("ICP fitness: " << icp.getFitnessScore()
+    //                                 << ", iterations: " << icp.getMaximumIterations());
 
     // 检查ICP结果是否合理
     float translation_diff = (icp.getFinalTransformation().block<3, 1>(0, 3) -
@@ -467,7 +467,7 @@ private:
                                  .norm();
     if (translation_diff > 2.0)
     {
-      ROS_WARN("Large ICP deviation (%.2fm), using odometry pose", translation_diff);
+      // ROS_WARN("Large ICP deviation (%.2fm), using odometry pose", translation_diff);
       return init_guess;
     }
 
