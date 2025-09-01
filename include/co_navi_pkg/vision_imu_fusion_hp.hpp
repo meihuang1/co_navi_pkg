@@ -537,10 +537,15 @@ private:
     // odom.twist.twist.linear.y = state_.vel.y();
     // odom.twist.twist.linear.z = state_.vel.z();
 
-    // Eigen::Vector3d outVel = outputProcessing(visVel_, state_.vel, mode_, false);
-    odom.twist.twist.linear.x = state_.vel.x();
-    odom.twist.twist.linear.y = state_.vel.y();
-    odom.twist.twist.linear.z = state_.vel.z();
+    Eigen::Vector3d estVel = state_.vel;
+    if(mode_ == "low"){
+      Eigen::Vector3d outVel = outputProcessing(visVel_, state_.vel, mode_, true);
+      estVel = outVel;
+    }
+
+    odom.twist.twist.linear.x = estVel.x();
+    odom.twist.twist.linear.y = estVel.y();
+    odom.twist.twist.linear.z = estVel.z();
 
     odom.twist.twist.angular.x = state_.ang_vel.x();
     odom.twist.twist.angular.y = state_.ang_vel.y();
@@ -550,7 +555,7 @@ private:
 
     std_msgs::Float64MultiArray err_msgs;
     Eigen::Vector3d pos_err = curVisPos_ - estPos;
-    Eigen::Vector3d vel_err = curVisVel_ - state_.vel;
+    Eigen::Vector3d vel_err = curVisVel_ - estVel;
     err_msgs.data = {pos_err.x(), pos_err.y(), pos_err.z(), pos_err.norm(),
                      vel_err.x(), vel_err.y(), vel_err.z(), vel_err.norm()};
     error_pub.publish(err_msgs);

@@ -9,7 +9,7 @@
     <arg name="init_z"/>
 
     <arg name="run_mode"/>
-    <node pkg="co_navi_pkg" name="IMU_Vision_fusion_hp_$(arg drone_id)" type="IMU_Vision_fusion_hp" output = "screen">
+    <node pkg="co_navi_pkg" name="IMU_Vision_fusion_hp_$(arg drone_id)" type="IMU_Vision_fusion_hp">
         
         <param name="icp_max_distance" value="$(arg icp_max_distance)" />
         <param name="icp_max_iter" value="$(arg icp_max_iter)" />

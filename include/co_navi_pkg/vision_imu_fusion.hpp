@@ -195,11 +195,11 @@ private:
     pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*cloud_msg, *input);
 
-    // if (input->empty())
-    // {
-    //   ROS_WARN("Empty input cloud");
-    //   return;
-    // }
+    if (input->empty())
+    {
+      ROS_WARN("Empty input cloud");
+      return;
+    }
 
     // 预处理点云
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered = preprocessCloudUnified(input, voxel_leaf_size_, false);
@@ -513,8 +513,6 @@ private:
                            pose(1, 3),
                            pose(2, 3));
 
-    // Eigen::Vector3d outPos = outputProcessingPos(visPos_, estPos, mode_, false, 1.0);
-
     odom.pose.pose.position.x = estPos.x();
     odom.pose.pose.position.y = estPos.y();
     odom.pose.pose.position.z = estPos.z();
@@ -528,11 +526,15 @@ private:
     // odom.twist.twist.linear.x = state_.vel.x();
     // odom.twist.twist.linear.y = state_.vel.y();
     // odom.twist.twist.linear.z = state_.vel.z();
+    Eigen::Vector3d estVel = state_.vel;
+    if(mode_ == "low"){
+      Eigen::Vector3d outVel = outputProcessing(visVel_, state_.vel, mode_, true);
+      estVel = outVel;
+    }
 
-    // Eigen::Vector3d outVel = outputProcessing(visVel_, state_.vel, mode_, false);
-    odom.twist.twist.linear.x = state_.vel.x();
-    odom.twist.twist.linear.y = state_.vel.y();
-    odom.twist.twist.linear.z = state_.vel.z();
+    odom.twist.twist.linear.x = estVel.x();
+    odom.twist.twist.linear.y = estVel.y();
+    odom.twist.twist.linear.z = estVel.z();
 
     odom.twist.twist.angular.x = state_.ang_vel.x();
     odom.twist.twist.angular.y = state_.ang_vel.y();

@@ -1,0 +1,97 @@
+<launch>
+    <arg name="run_mode" value="mid"/>
+
+    <arg name="map_size_x" value="220.0"/>
+    <arg name="map_size_y" value="40.0"/>
+    <arg name="map_size_z" value="10.0"/>
+    <arg name="origin_lat" value="30.0"/>
+
+    <arg name="origin_lon" value="120.0"/>
+    <arg name="origin_alt" value="0.0"/>
+
+    <arg name="drone_id"    value="0"/>
+    <arg name="init_x"      value="-100.0"/>
+    <arg name="init_y"      value="0.0"/>
+    <arg name="init_z"      value="5.0"/>
+
+    <arg name="x_target"    value="100.0"/>
+    <arg name="y_target"    value="0.0"/>
+    
+    <arg name="a_max"       value="5.0"/>
+    <arg name="v_final"     value="7.0"/>
+    <arg name="odom_topic" value="visual_slam/odom"/>
+
+    <!-- Launch Rviz node -->
+    <include file="$(find ego_planner)/launch/rviz.launch"/>
+    
+    <include file="$(find co_navi_pkg)/launch/high_speed/map_drones_generator.launch">
+        <arg name="map_size_x" value="$(arg map_size_x)"/>
+        <arg name="map_size_y" value="$(arg map_size_y)"/>
+        <arg name="map_size_z" value="$(arg map_size_z)"/>
+    </include>
+
+    <include file="$(find co_navi_pkg)/launch/high_speed/run_files/run_in_sim.launch">
+        <arg name="drone_id"    value="$(arg drone_id)"/>
+        <arg name="init_x"      value="$(arg init_x)"/>
+        <arg name="init_y"      value="$(arg init_y)"/>
+        <arg name="init_z"      value="$(arg init_z)"/>
+
+        <arg name="map_size_x"  value="$(arg map_size_x)"/>
+        <arg name="map_size_y"  value="$(arg map_size_y)"/>
+        <arg name="map_size_z"  value="$(arg map_size_z)"/>
+        <arg name="odom_topic"  value="$(arg odom_topic)"/>
+    </include>
+
+    <!-- straight line traj generator -->
+    <include file="$(find co_navi_pkg)/launch/high_speed/line_traj_generator.launch">
+      <arg name="drone_id"    value="$(arg drone_id)"/>
+      <arg name="init_x"      value="$(arg init_x)"/>
+      <arg name="init_y"      value="$(arg init_y)"/>
+      <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="x_target"    value="$(arg x_target)"/>
+      <arg name="y_target"    value="$(arg y_target)"/>   
+
+      <arg name="a_max"       value="$(arg a_max)"/>
+      <arg name="v_final"     value="$(arg v_final)"/>
+    </include>
+
+    <!-- gps imu message generator -->
+    <include file="$(find co_navi_pkg)/launch/methods/odom_2_gps_imu.launch">
+        <arg name="drone_id"    value="$(arg drone_id)"/>
+        <arg name="init_x"      value="$(arg init_x)"/>
+        <arg name="init_y"      value="$(arg init_y)"/>
+        <arg name="init_z"      value="$(arg init_z)"/>
+    
+        <arg name="origin_lat"  value="$(arg origin_lat)"/>
+        <arg name="origin_lon"  value="$(arg origin_lon)"/>
+        <arg name="origin_alt"  value="$(arg origin_alt)"/>
+      </include>
+
+      <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IG.launch">
+        <arg name="drone_id"    value="$(arg drone_id)"/>
+        <arg name="init_x"      value="$(arg init_x)"/>
+        <arg name="init_y"      value="$(arg init_y)"/>
+        <arg name="init_z"      value="$(arg init_z)"/>
+        <arg name="origin_lat"  value="$(arg origin_lat)"/>
+        <arg name="origin_lon"  value="$(arg origin_lon)"/>
+        <arg name="origin_alt"  value="$(arg origin_alt)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
+      </include>
+
+      <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IV_hp.launch">
+        <arg name="drone_id"    value="$(arg drone_id)"/>
+        <arg name="init_x"      value="$(arg init_x)"/>
+        <arg name="init_y"      value="$(arg init_y)"/>
+        <arg name="init_z"      value="$(arg init_z)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
+      </include>
+
+      <node pkg="co_navi_pkg" type="error_analysis.py" name="error_analysis_$(arg drone_id)">
+          <param name="drone_id" value="$(arg drone_id)"/>
+          <param name="mode" value="$(arg run_mode)"/>
+      </node>
+      <node pkg = "co_navi_pkg" type="logs_save.py" name="log_save" >
+        <param name="run_mode"    value="$(arg run_mode)"/>
+        <param name="fusion_mode" value="imu_vision_high_precision"/>
+      </node>
+  </launch>

@@ -58,7 +58,7 @@ public:
 
         // 订阅 IMU 积分结果（用于 Z）
         imu_sub_ = nh_.subscribe<nav_msgs::Odometry>(
-            topic_prefix + "/imu_integrator_res", 1,
+            topic_prefix + "/odom_fused_IG", 1,
             &CooperativeLocalization::imuCallback, this);
 
         fused_odom_pub_ = nh_.advertise<nav_msgs::Odometry>(
@@ -83,10 +83,14 @@ private:
     std::vector<double> distances2d_;
     std::vector<double> distances3d_;
     double my_z_ = 0.0;
-
+    Eigen::Vector3d myVel_;
     // ----------------- 回调 -----------------
     void imuCallback(const nav_msgs::Odometry::ConstPtr &msg)
     {
+        myVel_.x() = msg->twist.twist.linear.x;
+        myVel_.y() = msg->twist.twist.linear.y;
+        myVel_.z() = msg->twist.twist.linear.z;
+
         my_z_ = msg->pose.pose.position.z;
         tryTrilateration();
     }
@@ -298,13 +302,18 @@ private:
     // ----------------- 发布 -----------------
     void publishFusedPose(const Eigen::Vector3d &pos)
     {
-        geometry_msgs::PoseStamped msg;
+        nav_msgs::Odometry msg;
         msg.header.stamp = ros::Time::now();
         msg.header.frame_id = "world";
-        msg.pose.position.x = pos.x();
-        msg.pose.position.y = pos.y();
-        msg.pose.position.z = pos.z();
-        msg.pose.orientation.w = 1.0;
+        msg.pose.pose.position.x = pos.x();
+        msg.pose.pose.position.y = pos.y();
+        msg.pose.pose.position.z = pos.z();
+        msg.pose.pose.orientation.w = 1.0;
+
+        msg.twist.twist.linear.x = myVel_.x();
+        msg.twist.twist.linear.y = myVel_.y();
+        msg.twist.twist.linear.z = myVel_.z();
+
         fused_odom_pub_.publish(msg);
 
         if (mode_ == "3d")

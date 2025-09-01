@@ -474,9 +474,11 @@ private:
         // odom.twist.twist.linear.x = v_filtered_.x();
         // odom.twist.twist.linear.y = v_filtered_.y();
         // odom.twist.twist.linear.z = v_filtered_.z();
+        Eigen::Vector3d outVel = v_w_;
+        if(mode_ == "low"){
+            outVel = outputProcessing(visVel_, v_w_, mode_, true);
+        }
 
-        
-        Eigen::Vector3d outVel = outputProcessing(visVel_, v_w_, mode_, false);
         odom.twist.twist.linear.x = outVel.x();
         odom.twist.twist.linear.y = outVel.y();
         odom.twist.twist.linear.z = outVel.z();

@@ -30,14 +30,4 @@
     <param name="init_z" value="$(arg init_z)"/>
   </node>
 
-  <node pkg="co_navi_pkg" type="imu_gps_publisher_R.py" name="odom_to_gps_imu_R_$(arg drone_id)">
-    <param name="drone_id" value="$(arg drone_id)"/>
-    <param name="origin_lat" value="$(arg origin_lat)"/>
-    <param name="origin_lon" value="$(arg origin_lon)"/>
-    <param name="origin_alt" value="$(arg origin_alt)"/>
-
-    <param name="init_x" value="$(arg init_x)"/>
-    <param name="init_y" value="$(arg init_y)"/>
-    <param name="init_z" value="$(arg init_z)"/>
-  </node>
 </launch>

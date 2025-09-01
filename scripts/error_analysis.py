@@ -14,6 +14,7 @@ class ErrorAnalyzer:
         # 参数
         self.drone_id = rospy.get_param('~drone_id', 0)
         self.mode = rospy.get_param('~mode', 'low')
+        self.run_mode = rospy.get_param('~run_mode', 'imu_gps')
         
         drone_prefix = f"/drone_{self.drone_id}"
 
@@ -162,7 +163,12 @@ class ErrorAnalyzer:
             msg.pose.pose.position.y,
             msg.pose.pose.position.z
         ])
-        est_vel = self.ig_global_vel
+        
+        est_vel = np.array([
+            msg.twist.twist.linear.x,
+            msg.twist.twist.linear.y,
+            msg.twist.twist.linear.z
+        ])
         self.compute_and_publish_error(est_pos, est_vel, self.co_loc_error_pub)
 
     # ---------------- 主循环 ----------------

@@ -21,14 +21,14 @@
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
         <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
-<!-- 
+
     <include file="$(find co_navi_pkg)/launch/high_speed/single_drone.launch">
         <arg name="drone_id"    value="1"/>
         <arg name="init_x"      value="-305.0"/>
         <arg name="init_y"      value="5.0"/>
         <arg name="init_z"      value="4.0"/>
         
-        <arg name="x_target"    value="305.0"/>
+        <arg name="x_target"    value="295.0"/>
         <arg name="y_target"    value="5.0"/>
         
         <arg name="a_max"       value="13.0"/>
@@ -46,7 +46,7 @@
         <arg name="init_y"      value="-5.0"/>
         <arg name="init_z"      value="4.0"/>
         
-        <arg name="x_target"    value="305.0"/>
+        <arg name="x_target"    value="295.0"/>
         <arg name="y_target"    value="-5.0"/>
         
         <arg name="a_max"       value="13.0"/>
@@ -65,7 +65,7 @@
         <arg name="init_y"      value="7.0"/>
         <arg name="init_z"      value="6.0"/>
         
-        <arg name="x_target"    value="295.0"/>
+        <arg name="x_target"    value="305.0"/>
         <arg name="y_target"    value="7.0"/>
         
         <arg name="a_max"       value="13.0"/>
@@ -83,7 +83,7 @@
         <arg name="init_y"      value="-7.0"/>
         <arg name="init_z"      value="6.0"/>
         
-        <arg name="x_target"    value="295.0"/>
+        <arg name="x_target"    value="305.0"/>
         <arg name="y_target"    value="-7.0"/>
         
         <arg name="a_max"       value="13.0"/>
@@ -93,5 +93,5 @@
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
         <arg name="run_mode"    value="$(arg run_mode)"/>
-    </include> -->
+    </include>
 </launch>

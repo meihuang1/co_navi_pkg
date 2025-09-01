@@ -15,7 +15,7 @@
 
     <!-- 协同定位节点 -->
     <node pkg="co_navi_pkg" name="cooperative_localization_$(arg drone_id)" 
-        type="cooperative_localization_node">
+        type="cooperative_localization_node" output="screen">
         <param name="drone_id" value="$(arg drone_id)" />
         <param name="total_drones" value="$(arg total_drones)" />
         <param name="mode" value="$(arg mode)" />

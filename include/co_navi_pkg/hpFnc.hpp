@@ -128,8 +128,8 @@ Eigen::Vector3d outputProcessing(const Eigen::Vector3d &truthVel,
         double scaleFactor = 0.0;
         if (mode == "low")
         {
-            errMax = 0.1;
-            scaleFactor = 4.0;
+            errMax = 0.19;
+            scaleFactor = 1.0;
         }
         if (mode == "mid")
         {

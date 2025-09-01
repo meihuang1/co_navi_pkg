@@ -1,0 +1,43 @@
+<launch>
+  <arg name="map_size_x" value="42.0"/>
+  <arg name="map_size_y" value="30.0"/>
+  <arg name="map_size_z" value="0.3"/>
+
+  <arg name="total_drones" value="5"/>
+  <arg name="mode" value="3d"/>
+  <arg name="run_mode" value="low"/>
+  <!-- Launch Rviz node -->
+  <include file="$(find ego_planner)/launch/rviz.launch"/>
+  
+  <include file="$(find co_navi_pkg)/launch/Heterogeneous/map_drones_generator.launch">
+      <arg name="map_size_x" value="$(arg map_size_x)"/>
+      <arg name="map_size_y" value="$(arg map_size_y)"/>
+      <arg name="map_size_z" value="$(arg map_size_z)"/>
+  </include>
+
+  <include file="$(find co_navi_pkg)/launch/low_speed/drones.launch">
+    <arg name="map_size_x" value="$(arg map_size_x)"/>
+    <arg name="map_size_y" value="$(arg map_size_y)"/>
+    <arg name="map_size_z" value="7"/>
+    <arg name="run_mode"    value="$(arg run_mode)"/>
+</include>
+
+
+  <include file="$(find co_navi_pkg)/launch/Heterogeneous/cars.launch">
+    <arg name="map_size_x" value="$(arg map_size_x)"/>
+    <arg name="map_size_y" value="$(arg map_size_y)"/>
+    <arg name="map_size_z" value="$(arg map_size_z)"/>
+    <arg name="run_mode"    value="$(arg run_mode)"/>
+  </include>
+
+
+  <include file="$(find co_navi_pkg)/launch/methods/dist_co_navi/dist_co_navi.launch">
+    <arg name="total_drones" value="$(arg total_drones)"/>
+    <arg name="mode" value="$(arg mode)"/>
+  </include>
+  
+  <node pkg = "co_navi_pkg" type="logs_save.py" name="log_save" >
+    <param name="run_mode"    value="$(arg run_mode)"/>
+    <param name="fusion_mode" value="cooperation_navigation_hetero"/>
+  </node>
+</launch>
