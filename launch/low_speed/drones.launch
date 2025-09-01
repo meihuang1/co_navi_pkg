@@ -3,6 +3,7 @@
     <arg name="map_size_x"/>
     <arg name="map_size_y"/>
     <arg name="map_size_z"/>
+    <arg name="run_mode"/>  
 
     <!-- 定义参数，从配置文件读取 -->
     <include file="$(find co_navi_pkg)/launch/low_speed/single_drone.launch">
@@ -17,6 +18,7 @@
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <include file="$(find co_navi_pkg)/launch/low_speed/single_drone.launch">
@@ -31,6 +33,7 @@
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <include file="$(find co_navi_pkg)/launch/low_speed/single_drone.launch">
@@ -45,6 +48,7 @@
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <include file="$(find co_navi_pkg)/launch/low_speed/single_drone.launch">
@@ -59,6 +63,7 @@
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
 
@@ -74,6 +79,7 @@
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
+        <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
 

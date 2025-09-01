@@ -21,6 +21,7 @@
         <arg name="map_size_x" value="$(arg map_size_x)"/>
         <arg name="map_size_y" value="$(arg map_size_y)"/>
         <arg name="map_size_z" value="$(arg map_size_z)"/>
+        <arg name="run_mode" value="low"/>
     </include>
 
 

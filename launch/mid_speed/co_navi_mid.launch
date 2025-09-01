@@ -18,6 +18,7 @@
         <arg name="map_size_x" value="$(arg map_size_x)"/>
         <arg name="map_size_y" value="$(arg map_size_y)"/>
         <arg name="map_size_z" value="$(arg map_size_z)"/>
+        <arg name="run_mode" value="mid"/>
     </include>
 
     <include file="$(find co_navi_pkg)/launch/methods/dist_co_navi/dist_co_navi.launch">

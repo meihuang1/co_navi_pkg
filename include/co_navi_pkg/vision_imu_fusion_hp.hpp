@@ -17,6 +17,7 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <Eigen/Dense>
+#include <std_msgs/Float64MultiArray.h>
 #include <co_navi_pkg/hpFnc.hpp>
 // ---------- IMU状态结构体 ----------
 struct State
@@ -122,11 +123,13 @@ public:
     sync->registerCallback(boost::bind(&IMUVisionFusion::syncCloudOdomCallback, this, _1, _2));
 
     // 订阅IMU用于预测（加前缀）
-    imu_sub = nh.subscribe(topic_prefix + "/imu", 100, &IMUVisionFusion::imuCallback, this);
+    imu_sub = nh.subscribe(topic_prefix + "/imu_hp", 100, &IMUVisionFusion::imuCallback, this);
 
     // 发布器（加前缀）
-    odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/odom_fused_IV", 10);
-    imu_odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/imu_integrator_res", 10);
+    odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/odom_fused_IV_hp", 10);
+    imu_odom_pub = nh.advertise<nav_msgs::Odometry>(topic_prefix + "/imu_integrator_res2", 10);
+
+    error_pub = nh.advertise<std_msgs::Float64MultiArray>(topic_prefix + "/error_iv_hp", 10);
 
     debug_cloud_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix + "/debug/filtered_cloud", 1);
     debug_map_pub = nh.advertise<sensor_msgs::PointCloud2>(topic_prefix + "/debug/filtered_map_cloud", 1);
@@ -149,7 +152,7 @@ private:
   ros::Subscriber imu_sub, cloud_map_sub, odom_vis_sub;
   std::unique_ptr<message_filters::Subscriber<nav_msgs::Odometry>> odom_sub;
   std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub;
-  ros::Publisher odom_pub, imu_odom_pub, debug_cloud_pub, debug_map_pub;
+  ros::Publisher odom_pub, imu_odom_pub, debug_cloud_pub, debug_map_pub, error_pub;
 
   int drone_id_;
   // 定义同步策略
@@ -165,8 +168,8 @@ private:
   Eigen::Matrix4f predict_pose;
   Eigen::Matrix4f last_transform;
 
-  Eigen::Vector3d visPos_;
-  Eigen::Vector3d visVel_;
+  Eigen::Vector3d visPos_, curVisPos_;
+  Eigen::Vector3d visVel_, curVisVel_;
 
   // ICP参数
   float icp_max_distance_;
@@ -192,6 +195,8 @@ private:
     }
 
     // 转换点云
+    curVisPos_ = visPos_;
+    curVisVel_ = visVel_;
     pcl::PointCloud<pcl::PointXYZ>::Ptr input(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::fromROSMsg(*cloud_msg, *input);
 
@@ -202,6 +207,8 @@ private:
     // }
 
     // 预处理点云
+    // 时间太长
+
     pcl::PointCloud<pcl::PointXYZ>::Ptr filtered = preprocessCloudUnified(input, voxel_leaf_size_, false);
 
     // 发布调试点云
@@ -211,12 +218,15 @@ private:
     Eigen::Matrix4f imu_prediction = predict_pose;
     Eigen::Matrix4f init_guess = imu_prediction;
 
+    // std::cout <<"cur vis 1 pos is " <<curVisPos_.transpose() << std::endl;
     // 执行ICP配准
     Eigen::Matrix4f icp_result = runICP(filtered, init_guess);
 
     // 智能选择最终位姿
     Eigen::Matrix4f final_pose = selectFinalPose(imu_prediction, icp_result);
-
+    // Eigen::Matrix4f final_pose = imu_prediction;
+    // curVisPos_ = visPos_;
+    // std::cout <<"cur vis 2 pos is " <<curVisPos_.transpose() << std::endl;
     // 发布最终结果
     publishOdometry(final_pose);
 
@@ -367,14 +377,14 @@ private:
 
     if (position_diff < position_threshold && orientation_diff < orientation_threshold)
     {
-      ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
-               position_diff, orientation_diff);
+      // ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
+      //          position_diff, orientation_diff);
       return icp_result;
     }
     else
     {
-      ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
-               position_diff, orientation_diff);
+      // ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
+      //          position_diff, orientation_diff);
       return imu_prediction;
     }
   }
@@ -513,11 +523,9 @@ private:
                            pose(1, 3),
                            pose(2, 3));
 
-    // Eigen::Vector3d outPos = outputProcessingPos(visPos_, estPos, mode_, false, 1.0);
-
-    odom.pose.pose.position.x = estPos.x();
-    odom.pose.pose.position.y = estPos.y();
-    odom.pose.pose.position.z = estPos.z();
+    odom.pose.pose.position.x = pose(0, 3);
+    odom.pose.pose.position.y = pose(1, 3);
+    odom.pose.pose.position.z = pose(2, 3);
 
     Eigen::Quaternionf q(pose.block<3, 3>(0, 0));
     odom.pose.pose.orientation.x = q.x();
@@ -539,6 +547,13 @@ private:
     odom.twist.twist.angular.z = state_.ang_vel.z();
 
     odom_pub.publish(odom);
+
+    std_msgs::Float64MultiArray err_msgs;
+    Eigen::Vector3d pos_err = curVisPos_ - estPos;
+    Eigen::Vector3d vel_err = curVisVel_ - state_.vel;
+    err_msgs.data = {pos_err.x(), pos_err.y(), pos_err.z(), pos_err.norm(),
+                     vel_err.x(), vel_err.y(), vel_err.z(), vel_err.norm()};
+    error_pub.publish(err_msgs);
   }
 };
 

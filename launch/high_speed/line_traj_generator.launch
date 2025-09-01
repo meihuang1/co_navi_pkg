@@ -1,0 +1,27 @@
+<launch>
+    <arg name="drone_id"/>
+    <arg name="init_x"/>
+    <arg name="init_y"/>
+    <arg name="init_z"/>
+    <arg name="x_target"/>
+    <arg name="y_target"/>
+    <arg name="a_max"/>
+    <arg name="v_final"/>
+    
+    <node pkg="co_navi_pkg" name="line_traj_generator_$(arg drone_id)" type="line_pub.py" output="screen">    
+        <param name="v_final" value="$(arg v_final)"/>
+
+        <param name="a_max" value="$(arg a_max)"/>
+        <param name="drone_id" value="$(arg drone_id)"/>
+        <param name="init_x" value="$(arg init_x)"/>
+        <param name="init_y" value="$(arg init_y)"/>
+        <param name="init_z" value="$(arg init_z)"/>
+        <param name="x_target" value="$(arg x_target)"/>
+        <param name="y_target" value="$(arg y_target)"/>
+    </node>
+    
+    <node pkg="co_navi_pkg" name="path_vis_$(arg drone_id)" type="path_vis.py" output="screen">    
+        <param name="drone_id" value="$(arg drone_id)"/>
+    </node>  
+
+</launch>    

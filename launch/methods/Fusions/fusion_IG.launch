@@ -7,7 +7,7 @@
     <arg name="init_x"/>
     <arg name="init_y"/>
     <arg name="init_z"/>
-    
+    <arg name = "run_mode"/>
     <!-- ESKF 节点 -->
     <node pkg="co_navi_pkg" type="IMU_GPS_eskf_fusion" name="IMU_GPS_fusion_$(arg drone_id)">
         <param name="drone_id" value="$(arg drone_id)"/>
@@ -24,6 +24,7 @@
         <param name="init_x" value="$(arg init_x)" />
         <param name="init_y" value="$(arg init_y)" />
         <param name="init_z" value="$(arg init_z)" />
+        <param name="run_mode" value="$(arg run_mode)" />
     </node>
 
 </launch>

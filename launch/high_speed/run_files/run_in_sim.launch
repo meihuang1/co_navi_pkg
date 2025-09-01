@@ -12,21 +12,6 @@
 
   <arg name="drone_id"/>
 
-  <arg name="point_num"/>
-  <arg name="point0_x"/>
-  <arg name="point0_y"/>
-  <arg name="point0_z"/>
-  <arg name="point1_x"/>
-  <arg name="point1_y"/>
-  <arg name="point1_z"/>
-  <arg name="point2_x"/>
-  <arg name="point2_y"/>
-  <arg name="point2_z"/>
-  <arg name="point3_x"/>
-  <arg name="point3_y"/>
-  <arg name="point3_z"/>
-
-
   <!-- topic of your odometry such as VIO or LIO -->
   <arg name="odom_topic"/>
 
@@ -66,7 +51,7 @@
     <arg name="max_acc" value="20.0" />
     <arg name="max_jerk" value="8.0" />
     <!--always set to 1.5 times grater than sensing horizen-->
-    <arg name="planning_horizon" value="100.0" /> 
+    <arg name="planning_horizon" value="0.0" /> 
 
     <arg name="use_distinctive_trajs" value="true" />
 
@@ -76,34 +61,8 @@
     
     <!-- global waypoints -->
     <!-- It generates a piecewise min-snap traj passing all waypoints -->
-    <arg name="point_num" value="$(arg point_num)" />
 
-    <arg name="point0_x" value="$(arg point0_x)" />
-    <arg name="point0_y" value="$(arg point0_y)" />
-    <arg name="point0_z" value="$(arg point0_z)" />
-
-    <arg name="point1_x" value="$(arg point1_x)" />
-    <arg name="point1_y" value="$(arg point1_y)" />
-    <arg name="point1_z" value="$(arg point1_z)" />
-
-    <arg name="point2_x" value="$(arg point2_x)" />
-    <arg name="point2_y" value="$(arg point2_y)" />
-    <arg name="point2_z" value="$(arg point2_z)" />
-
-    <arg name="point3_x" value="$(arg point3_x)" />
-    <arg name="point3_y" value="$(arg point3_y)" />
-    <arg name="point3_z" value="$(arg point3_z)" />
-
-    
   </include>
-
-  <!-- trajectory server -->
-  <node pkg="ego_planner" name="drone_$(arg drone_id)_traj_server" type="traj_server" output="screen">
-    <remap from="position_cmd" to="drone_$(arg drone_id)_planning/pos_cmd"/>
-    <remap from="~planning/bspline" to="drone_$(arg drone_id)_planning/bspline"/>
-
-    <param name="traj_server/time_forward" value="1.0" type="double"/>
-  </node>
 
   <!-- use simulator -->
   <include file="$(find co_navi_pkg)/launch/high_speed/run_files/simulator.xml">

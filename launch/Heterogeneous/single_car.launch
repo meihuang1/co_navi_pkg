@@ -65,8 +65,8 @@
       <arg name="init_z"      value="$(arg init_z)"/>
     </include>
 
-    <!-- FUSION NODE IMU GPS VISION-->
-    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IGV.launch">
+    <!-- FUSION NODE IMU VISION HIGH PRECISION-->
+    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IV_hp.launch">
       <arg name="drone_id"    value="$(arg drone_id)"/>
       <arg name="init_x"      value="$(arg init_x)"/>
       <arg name="init_y"      value="$(arg init_y)"/>

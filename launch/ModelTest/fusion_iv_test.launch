@@ -1,0 +1,15 @@
+<launch>
+    <arg name="drone_id"    value="0"/>
+    <arg name="init_x"      value="-150.0"/>
+    <arg name="init_y"      value="-130.0"/>
+    <arg name="init_z"      value="7.0"/>
+    <arg name="run_mode"    value="high"/>
+    
+    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IV.launch">
+      <arg name="drone_id"    value="$(arg drone_id)"/>
+      <arg name="init_x"      value="$(arg init_x)"/>
+      <arg name="init_y"      value="$(arg init_y)"/>
+      <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
+    </include>
+</launch>

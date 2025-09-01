@@ -14,22 +14,13 @@
     <arg name="init_x"/>
     <arg name="init_y"/>
     <arg name="init_z"/>
-    
+    <arg name="run_mode"/>
 
-    <arg name="point_num"/>
-    <arg name="point0_x"/>
-    <arg name="point0_y"/>
-    <arg name="point0_z"/>
-    <arg name="point1_x"/>
-    <arg name="point1_y"/>
-    <arg name="point1_z"/>
-    <arg name="point2_x"/>
-    <arg name="point2_y"/>
-    <arg name="point2_z"/>
-    <arg name="point3_x"/>
-    <arg name="point3_y"/>
-    <arg name="point3_z"/>
+    <arg name="x_target"/>
+    <arg name="y_target"/>
 
+    <arg name="a_max"/>
+    <arg name="v_final"/>
 
     <!-- drone x generator -->
     <!-- planner run in sim --> 
@@ -43,21 +34,19 @@
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
         <arg name="map_size_z"  value="$(arg map_size_z)"/>
         <arg name="odom_topic"  value="$(arg odom_topic)"/>
+    </include>
 
-        <arg name="point_num"   value="$(arg point_num)"/>
-        <arg name="point0_x"    value="$(arg point0_x)"/>
-        <arg name="point0_y"    value="$(arg point0_y)"/>
-        <arg name="point0_z"    value="$(arg point0_z)"/>
-        <arg name="point1_x"    value="$(arg point1_x)"/>
-        <arg name="point1_y"    value="$(arg point1_y)"/>
-        <arg name="point1_z"    value="$(arg point1_z)"/>
-        <arg name="point2_x"    value="$(arg point2_x)"/>
-        <arg name="point2_y"    value="$(arg point2_y)"/>
-        <arg name="point2_z"    value="$(arg point2_z)"/>
-        <arg name="point3_x"    value="$(arg point3_x)"/>
-        <arg name="point3_y"    value="$(arg point3_y)"/>
-        <arg name="point3_z"    value="$(arg point3_z)"/>
+    <!-- straight line traj generator -->
+    <include file="$(find co_navi_pkg)/launch/high_speed/line_traj_generator.launch">
+      <arg name="drone_id"    value="$(arg drone_id)"/>
+      <arg name="init_x"      value="$(arg init_x)"/>
+      <arg name="init_y"      value="$(arg init_y)"/>
+      <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="x_target"    value="$(arg x_target)"/>
+      <arg name="y_target"    value="$(arg y_target)"/>   
 
+      <arg name="a_max"       value="$(arg a_max)"/>
+      <arg name="v_final"     value="$(arg v_final)"/>
     </include>
 
     <!-- gps imu message generator -->
@@ -81,6 +70,7 @@
       <arg name="origin_lat"  value="$(arg origin_lat)"/>
       <arg name="origin_lon"  value="$(arg origin_lon)"/>
       <arg name="origin_alt"  value="$(arg origin_alt)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <!-- FUSION NODE IMU VISION-->
@@ -89,14 +79,16 @@
       <arg name="init_x"      value="$(arg init_x)"/>
       <arg name="init_y"      value="$(arg init_y)"/>
       <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
-    <!-- FUSION NODE IMU GPS VISION-->
-    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IGV.launch">
+    <!-- FUSION NODE IMU VISION HIGH PRECISION-->
+    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IV_hp.launch">
       <arg name="drone_id"    value="$(arg drone_id)"/>
       <arg name="init_x"      value="$(arg init_x)"/>
       <arg name="init_y"      value="$(arg init_y)"/>
       <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <node pkg="co_navi_pkg" type="error_analysis.py" name="error_analysis_$(arg drone_id)">

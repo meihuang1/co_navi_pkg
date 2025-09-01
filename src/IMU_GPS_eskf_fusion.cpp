@@ -24,6 +24,7 @@
 #include <Eigen/Dense>
 #include <deque>
 #include <cmath>
+#include <co_navi_pkg/hpFnc.hpp>
 
 using Vec3 = Eigen::Vector3d;
 using Mat3 = Eigen::Matrix3d;
@@ -66,7 +67,7 @@ public:
         gps_topic_ = "/" + ns + "/gps";
         mag_topic_ = "/" + ns + "/mag";
         vgps_topic_ = "/" + ns + "/gps_vel";
-
+        odom_vis_topic_ = "/" + ns + "_visual_slam/odom";
         repub_odom_topic_ = "/" + ns + "/odom_fused_IG";
         repub_g_odom_topic_ = "/" + ns + "/odom_fused_IG_global";
         repub_gpos_topic_ = "/" + ns + "/pose_fused_IG";
@@ -85,6 +86,7 @@ public:
         nh_.param("init_x", init_x_, 0.0);
         nh_.param("init_y", init_y_, 0.0);
         nh_.param("init_z", init_z_, 0.0);
+        nh_.param<std::string>("run_mode", mode_, "low");
 
         // ---- noise covariances
         Qd_.setZero();
@@ -114,7 +116,8 @@ public:
         sub_gps_ = nh_.subscribe(gps_topic_, 50, &ESKFNode::gpsCallback, this, ros::TransportHints().tcpNoDelay());
         sub_mag_ = nh_.subscribe(mag_topic_, 50, &ESKFNode::magCallback, this, ros::TransportHints().tcpNoDelay());
         sub_vgps_ = nh_.subscribe(vgps_topic_, 50, &ESKFNode::vGPSCallback, this, ros::TransportHints().tcpNoDelay());
-
+        sub_odom_vis_ = nh_.subscribe(odom_vis_topic_, 50, &ESKFNode::odomVisCallback, this, ros::TransportHints().tcpNoDelay());
+        
         array_pub_ = nh_.advertise<std_msgs::Float64MultiArray>("double_infos", 10);
         pub_odom_ = nh_.advertise<nav_msgs::Odometry>(repub_odom_topic_, 50);
         pub_global_odom_ = nh_.advertise<nav_msgs::Odometry>(repub_g_odom_topic_, 50);
@@ -139,26 +142,28 @@ private:
     const double ACC_STATIC_THRESH = 0.1;   // 加速度静止阈值 (m/s²)
     const int STATIC_COUNT_THRESHOLD = 20;  // 连续多少帧认为静止
     int static_counter_ = 0;
-
+    std::string mode_;
     // ----------------------------filter members --------------------------------
     std::deque<Vec3> acc_buffer_;
     const int ACC_BUFFER_SIZE = 30;
 
     Vec3 v_filtered_ = Vec3::Zero();
-    double v_filter_alpha_ = 0.98; // 越接近1越平滑，建议 0.95 ~ 0.99
+    double v_filter_alpha_ = 0.1; // 越接近1越平滑，建议 0.95 ~ 0.99
 
     Vec3 ang_filtered_;              // 初始化为 0
     double ang_filter_alpha_ = 0.98; // 或者 0.9 ~ 0.98 之间调节
 
+    Vec3 visPos_, visVel_;
+
     // --------------------------- ROS members --------------------------------
     ros::NodeHandle nh_;
-    ros::Subscriber sub_imu_, sub_gps_, sub_mag_, sub_vgps_;
+    ros::Subscriber sub_imu_, sub_gps_, sub_mag_, sub_vgps_, sub_odom_vis_;
     ros::Publisher pub_odom_, array_pub_, pub_global_pose_, pub_global_odom_;
     std_msgs::Float64MultiArray msg;
     tf2_ros::TransformBroadcaster tf_pub_;
 
     std::string frame_id_, odom_frame_, imu_topic_, gps_topic_, mag_topic_,
-        vgps_topic_, repub_odom_topic_, repub_gpos_topic_, repub_g_odom_topic_;
+        vgps_topic_, repub_odom_topic_, repub_gpos_topic_, repub_g_odom_topic_, odom_vis_topic_;
 
     ros::Time prev_imu_stamp_;
     bool first_imu_;
@@ -228,7 +233,7 @@ private:
             return;
         }
 
-        double dt = (msg->header.stamp - prev_imu_stamp_).toSec();
+        double dt = 0.01;
         prev_imu_stamp_ = msg->header.stamp;
 
         predict(ang, acc, q_imu, dt); // 使用积分的姿态更新
@@ -261,6 +266,20 @@ private:
     {
         Vec3 vel_meas(msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z);
         correctGpsVel(vel_meas);
+    }
+
+
+    void odomVisCallback(const nav_msgs::Odometry::ConstPtr &msg)
+    {
+      Vec3 pos(msg->pose.pose.position.x,
+                          msg->pose.pose.position.y,
+                          msg->pose.pose.position.z);
+      Vec3 vel(msg->twist.twist.linear.x,
+                          msg->twist.twist.linear.y,
+                          msg->twist.twist.linear.z);
+  
+      visPos_ = pos;
+      visVel_ = vel;
     }
 
     void correctMag(const Vec3 &mag_meas)
@@ -332,7 +351,8 @@ private:
         // q_wb_ = q_imu;
         // 世界坐标加速度（考虑重力 + 平滑滤波）
         Vec3 g_w(0, 0, -kG);
-        Vec3 acc_w = q_wb_ * acc + g_w;
+        // Vec3 acc_w = q_wb_ * acc + g_w;
+        Vec3 acc_w = acc + g_w;
         // acc_w = filterAcc(acc_w);
         // std::cout << "x() " << acc_w.x() << " y() " << acc_w.y() << " z() " << acc_w.z() << std::endl;
         // 判断是否静止
@@ -348,7 +368,7 @@ private:
                 // 静止检测后归零
                 if (static_counter_ == STATIC_COUNT_THRESHOLD + 1)
                 {
-                    v_w_.setZero();
+                    // v_w_.setZero();
                     ROS_INFO("ZUPT: Velocity zeroed due to static state.");
                 }
             }
@@ -359,19 +379,19 @@ private:
             is_static_ = false;
         }
         // 速度和位置更新
-        if (!is_static_)
-        {
-            v_w_ += acc_w * dt;
-        }
-        else
-        {
-            v_w_ = v_w_ * 0.1; // 缓慢减速，防止跳变
-            acc_w.setZero();
-        }
+        // if (!is_static_)
+        // {
+        v_w_ += acc_w * dt;
+        // }
+        // else
+        // {
+        //     v_w_ = v_w_ * 0.1; // 缓慢减速，防止跳变
+        //     acc_w.setZero();
+        // }
 
         // 滤波速度
-        v_filtered_ = v_filter_alpha_ * v_filtered_ + (1.0 - v_filter_alpha_) * v_w_;
-        p_w_ += v_filtered_ * dt + 0.5 * acc_w * dt * dt;
+        // v_filtered_ = v_filter_alpha_ * v_filtered_ + (1.0 - v_filter_alpha_) * v_w_;
+        p_w_ += v_w_ * dt + 0.5 * acc_w * dt * dt;
 
         // 协方差简单传播
         P_.block<3, 3>(0, 0) += Mat3::Identity() * 1e-5 * dt;   // rot
@@ -451,10 +471,20 @@ private:
         odom.pose.pose.orientation.z = q_wb_.z();
         odom.pose.pose.orientation.w = q_wb_.w();
 
-        odom.twist.twist.linear.x = v_filtered_.x();
-        odom.twist.twist.linear.y = v_filtered_.y();
-        odom.twist.twist.linear.z = v_filtered_.z();
+        // odom.twist.twist.linear.x = v_filtered_.x();
+        // odom.twist.twist.linear.y = v_filtered_.y();
+        // odom.twist.twist.linear.z = v_filtered_.z();
 
+        
+        Eigen::Vector3d outVel = outputProcessing(visVel_, v_w_, mode_, false);
+        odom.twist.twist.linear.x = outVel.x();
+        odom.twist.twist.linear.y = outVel.y();
+        odom.twist.twist.linear.z = outVel.z();
+
+        odom.twist.twist.angular.x = ang_.x();
+        odom.twist.twist.angular.y = ang_.y();
+        odom.twist.twist.angular.z = ang_.z();
+        
         pub_odom_.publish(odom);
 
         geometry_msgs::PoseStamped pose;
@@ -488,9 +518,13 @@ private:
         g_odom.pose.pose.orientation.z = q_wb_.z();
         g_odom.pose.pose.orientation.w = q_wb_.w();
 
-        g_odom.twist.twist.linear.x = v_filtered_.x();
-        g_odom.twist.twist.linear.y = v_filtered_.y();
-        g_odom.twist.twist.linear.z = v_filtered_.z();
+        // g_odom.twist.twist.linear.x = v_filtered_.x();
+        // g_odom.twist.twist.linear.y = v_filtered_.y();
+        // g_odom.twist.twist.linear.z = v_filtered_.z();
+
+        g_odom.twist.twist.linear.x = outVel.x();
+        g_odom.twist.twist.linear.y = outVel.y();
+        g_odom.twist.twist.linear.z = outVel.z();
 
         g_odom.twist.twist.angular.x = ang_.x();
         g_odom.twist.twist.angular.y = ang_.y();

@@ -16,6 +16,7 @@
     <arg name="init_x"/>
     <arg name="init_y"/>
     <arg name="init_z"/>
+    <arg name="run_mode"/>
 
     <!-- drone x generator -->
     <!-- planner run in sim --> 
@@ -55,6 +56,7 @@
       <arg name="origin_lat"  value="$(arg origin_lat)"/>
       <arg name="origin_lon"  value="$(arg origin_lon)"/>
       <arg name="origin_alt"  value="$(arg origin_alt)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <!-- FUSION NODE IMU VISION-->
@@ -63,14 +65,16 @@
       <arg name="init_x"      value="$(arg init_x)"/>
       <arg name="init_y"      value="$(arg init_y)"/>
       <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
-    <!-- FUSION NODE IMU GPS VISION-->
-    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IGV.launch">
+    <!-- FUSION NODE IMU VISION HIGH PRECISION-->
+    <include file="$(find co_navi_pkg)/launch/methods/Fusions/fusion_IV_hp.launch">
       <arg name="drone_id"    value="$(arg drone_id)"/>
       <arg name="init_x"      value="$(arg init_x)"/>
       <arg name="init_y"      value="$(arg init_y)"/>
       <arg name="init_z"      value="$(arg init_z)"/>
+      <arg name="run_mode"    value="$(arg run_mode)"/>
     </include>
 
     <node pkg="co_navi_pkg" type="error_analysis.py" name="error_analysis_$(arg drone_id)">

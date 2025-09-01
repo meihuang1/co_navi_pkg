@@ -373,14 +373,14 @@ private:
 
     if (position_diff < position_threshold && orientation_diff < orientation_threshold)
     {
-      // ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
-      //          position_diff, orientation_diff);
+      ROS_INFO("ICP result accepted: pos_diff=%.2fm, ori_diff=%.2frad, using ICP",
+               position_diff, orientation_diff);
       return icp_result;
     }
     else
     {
-      // ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
-      //          position_diff, orientation_diff);
+      ROS_WARN("ICP result rejected: pos_diff=%.2fm, ori_diff=%.2frad, using IMU",
+               position_diff, orientation_diff);
       return imu_prediction;
     }
   }
