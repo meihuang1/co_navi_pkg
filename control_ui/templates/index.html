@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>无人集群系统协同导航算法测试</title>
+</head>
+<body>
+  <h2>无人集群系统协同导航算法测试</h2>
+
+  <label>速度选择: </label>
+  <select id="speed" onchange="updateAlgos()">
+    {% for s in speeds %}
+    <option value="{{s}}">{{s}}</option>
+    {% endfor %}
+  </select>
+
+  <label>算法选择: </label>
+  <select id="algo">
+    {% for a in algos %}
+    <option value="{{a}}">{{a}}</option>
+    {% endfor %}
+  </select>
+
+  <br><br>
+  <button onclick="loadEnv()">加载环境</button>
+  <button onclick="runExp()">运行</button>
+  <button onclick="stopExp()">停止</button>
+  <button onclick="analyze()">分析</button>
+
+  <h3>实时速度: <span id="current_speed">0.00</span> m/s</h3>
+
+  <p id="status"></p>
+  <pre id="stats" style="background:#f4f4f4; padding:10px;"></pre>
+  <div id="plot"></div>
+
+<script>
+  
+const launch_paths = {{ launch_paths|tojson }};
+
+function updateAlgos() {
+  const speed = document.getElementById("speed").value;
+  const algoSelect = document.getElementById("algo");
+  algoSelect.innerHTML = "";
+  launch_paths[speed] && Object.keys(launch_paths[speed]).forEach(algo => {
+    const opt = document.createElement("option");
+    opt.value = algo;
+    opt.innerText = algo;
+    algoSelect.appendChild(opt);
+  });
+}
+
+function post(url, data) {
+  return fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(data)
+  }).then(r => r.json());
+}
+
+function loadEnv() {
+  let speed = document.getElementById("speed").value;
+  let algo = document.getElementById("algo").value;
+  post("/load", {speed, algo}).then(r => document.getElementById("status").innerText = r.message);
+}
+
+function runExp() {
+  post("/run", {}).then(r => document.getElementById("status").innerText = r.message);
+}
+
+function stopExp() {
+  post("/stop", {}).then(r => document.getElementById("status").innerText = r.message);
+}
+
+function analyze() {
+  let speed = document.getElementById("speed").value;
+  let algo = document.getElementById("algo").value;
+  post("/analyze", {speed, algo}).then(r => {
+    let stats = document.getElementById("stats");
+    let plotDiv = document.getElementById("plot");
+    if (r.status === "ok") {
+      stats.innerText = r.stats;
+      plotDiv.innerHTML = "";
+      r.images.forEach(img => {
+        plotDiv.innerHTML += `<img src="${img}" style="max-width:600px; margin:10px; border:1px solid #ccc;">`;
+      });
+    } else {
+      stats.innerText = r.message;
+      plotDiv.innerHTML = "";
+    }
+  });
+}
+
+// 从文件实时刷新速度
+function refreshSpeed() {
+  fetch("/current_speed")
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById("current_speed").innerText = data.speed.toFixed(2);
+    });
+}
+
+setInterval(refreshSpeed, 200);
+</script>
+</body>
+</html>

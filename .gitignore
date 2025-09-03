@@ -15,6 +15,9 @@ build/
 devel/
 install/
 
+static/
+/control_ui/data/
+
 # IDE files
 .vscode/
 .idea/

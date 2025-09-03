@@ -20,8 +20,8 @@
         <param name="y_target" value="$(arg y_target)"/>
     </node>
     
-    <node pkg="co_navi_pkg" name="path_vis_$(arg drone_id)" type="path_vis.py" output="screen">    
+    <!-- <node pkg="co_navi_pkg" name="path_vis_$(arg drone_id)" type="path_vis.py" output="screen">    
         <param name="drone_id" value="$(arg drone_id)"/>
-    </node>  
+    </node>   -->
 
 </launch>    

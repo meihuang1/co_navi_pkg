@@ -34,7 +34,7 @@ class SmoothLineTrajectory:
         # ==== ROS pub/sub ====
         topic_name = f"/drone_{self.drone_id}_visual_slam/odom"
         self.pub = rospy.Publisher(topic_name, Odometry, queue_size=10)
-        rospy.Subscriber('/run_cd', Int32, self.run_cmd_callback)
+        rospy.Subscriber('/run_cmd', Int32, self.run_cmd_callback)
 
         rospy.loginfo(f"[Trajectory Node] drone_id={self.drone_id}, publishing on {topic_name}")
 
@@ -113,7 +113,7 @@ class SmoothLineTrajectory:
         odom.pose.pose.position.x = self.pos_x
         odom.pose.pose.position.y = self.pos_y
         odom.pose.pose.position.z = self.z_height
-
+        odom.pose.pose.orientation.w = 1
         odom.twist.twist.linear.x = self.vel
         odom.twist.twist.linear.y = 0.0
         odom.twist.twist.linear.z = 0.0

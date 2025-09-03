@@ -3,6 +3,10 @@
     <arg name="map_size_y"/>
     <arg name="map_size_z"/>
     <arg name="run_mode"/>
+
+    <arg name="a_max" value="3.0"/>
+    <arg name="v_final" value="9.0"/>
+
     <!-- 定义参数，从配置文件读取 -->
     <include file="$(find co_navi_pkg)/launch/high_speed/single_drone.launch">
         <arg name="drone_id"    value="0"/>
@@ -12,9 +16,9 @@
 
         <arg name="x_target"    value="100.0"/>
         <arg name="y_target"    value="0.0"/>
-        
-        <arg name="a_max"       value="3.0"/>
-        <arg name="v_final"       value="9.0"/>
+
+        <arg name="a_max"       value="$(arg a_max)"/>
+        <arg name="v_final"     value="$(arg v_final)"/>
 
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
@@ -31,8 +35,8 @@
         <arg name="x_target"    value="95.0"/>
         <arg name="y_target"    value="7.0"/>
         
-        <arg name="a_max"       value="3.0"/>
-        <arg name="v_final"       value="9.0"/>
+        <arg name="a_max"       value="$(arg a_max)"/>
+        <arg name="v_final"     value="$(arg v_final)"/>
 
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
@@ -49,8 +53,8 @@
         <arg name="x_target"    value="95.0"/>
         <arg name="y_target"    value="-7.0"/>
         
-        <arg name="a_max"       value="3.0"/>
-        <arg name="v_final"       value="9.0"/>
+        <arg name="a_max"       value="$(arg a_max)"/>
+        <arg name="v_final"     value="$(arg v_final)"/>
 
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
@@ -68,8 +72,8 @@
         <arg name="x_target"    value="105.0"/>
         <arg name="y_target"    value="5.0"/>
         
-        <arg name="a_max"       value="3.0"/>
-        <arg name="v_final"       value="9.0"/>
+        <arg name="a_max"       value="$(arg a_max)"/>
+        <arg name="v_final"     value="$(arg v_final)"/>
 
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>
@@ -86,8 +90,8 @@
         <arg name="x_target"    value="105.0"/>
         <arg name="y_target"    value="-5.0"/>
         
-        <arg name="a_max"       value="3.0"/>
-        <arg name="v_final"       value="9.0"/>
+        <arg name="a_max"       value="$(arg a_max)"/>
+        <arg name="v_final"     value="$(arg v_final)"/>
 
         <arg name="map_size_x"  value="$(arg map_size_x)"/>
         <arg name="map_size_y"  value="$(arg map_size_y)"/>

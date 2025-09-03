@@ -1,95 +1,144 @@
 #!/usr/bin/env python3
-import os
-import sys
 import csv
 import math
+import sys
+import os
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-def read_error_file(error_file):
-    stamps, pos_norm, vel_norm = [], [], []
-    with open(error_file, "r") as f:
+STATIC_DIR = "/home/adminn/ros_ws/Fast_Lab/ego-planner-swarm/src/co_navi_pkg/static"
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+def load_csv(file_path):
+    times_gt, pos_gt, vel_gt = [], [], []
+    times_fused, pos_fused, vel_fused = [], [], []
+    times_err, pos_err, vel_err = [], [], []
+
+    with open(file_path, "r") as f:
         reader = csv.reader(f)
-        next(reader)  # 跳过表头
+        header = next(reader)
         for row in reader:
-            if not row: 
-                continue
-            stamps.append(float(row[0]))
-            pos_norm.append(float(row[4]))  # pos_norm
-            vel_norm.append(float(row[8]))  # vel_norm
-    return stamps, pos_norm, vel_norm
+            # ground truth
+            if row[0]:
+                t = float(row[0])
+                times_gt.append(t)
+                pos_gt.append([float(row[1]), float(row[2]), float(row[3])])
+                vel_gt.append([float(row[4]), float(row[5]), float(row[6])])
+            # fused odom
+            if row[10]:
+                t = float(row[10])
+                times_fused.append(t)
+                pos_fused.append([float(row[11]), float(row[12]), float(row[13])])
+                vel_fused.append([float(row[14]), float(row[15]), float(row[16])])
+            # fusion err_norm
+            if row[7]:
+                t = float(row[7])
+                times_err.append(t)
+                pos_err.append(float(row[8]))
+                vel_err.append(float(row[9]))
 
-def read_odom_file(odom_file):
-    stamps, vel_norm = [], []
-    with open(odom_file, "r") as f:
-        reader = csv.reader(f)
-        next(reader)  # 跳过表头
-        for row in reader:
-            if not row: 
-                continue
-            stamps.append(float(row[0]))
-            vx, vy, vz = float(row[4]), float(row[5]), float(row[6])
-            vel_norm.append(math.sqrt(vx*vx + vy*vy + vz*vz))
-    return stamps, vel_norm
+    # 时间对齐
+    if times_gt:
+        t0 = times_gt[0]
+        times_gt = [t - t0 for t in times_gt]
+    if times_fused:
+        t0 = times_fused[0]
+        times_fused = [t - t0 for t in times_fused]
+    if times_err:
+        t0 = times_err[0]
+        times_err = [t - t0 for t in times_err]
 
-def compute_stats(arr):
-    n = len(arr)
-    if n == 0:
-        return {"max": 0, "mean": 0, "rms": 0}
-    max_val = max(arr)
-    mean_val = sum(arr) / n
-    rms_val = math.sqrt(sum(x*x for x in arr) / n)
-    return {"max": max_val, "mean": mean_val, "rms": rms_val}
+    return times_gt, pos_gt, vel_gt, times_fused, pos_fused, vel_fused, times_err, pos_err, vel_err
 
-def analyze_logs(error_file, odom_file):
-    # 读文件
-    t_error, pos_norm, vel_norm = read_error_file(error_file)
-    t_odom, odom_vel_norm = read_odom_file(odom_file)
+def compute_stats(values, label=""):
+    if not values:
+        return
+    n = len(values)
+    mean_val = sum(values)/n
+    max_val = max(values)
+    mse = sum(v*v for v in values)/n
+    print(f"{label}: mean={mean_val:.4f}, max={max_val:.4f}, mse={mse:.4f}")
+    
 
-    # 统计
-    pos_stats = compute_stats(pos_norm)
-    vel_stats = compute_stats(vel_norm)
+def vector_norm_list(vec_list):
+    return [math.sqrt(x[0]**2 + x[1]**2 + x[2]**2) for x in vec_list]
 
-    print("位置误差 pos_norm:", pos_stats)
-    print("速度误差 vel_norm:", vel_stats)
+def compute_stats_table(pos_err, vel_err):
+    # 计算指标
+    def stats(values):
+        n = len(values)
+        mean_val = sum(values)/n
+        max_val = max(values)
+        mse = sum(v*v for v in values)/n
+        return mean_val, max_val, mse
 
-    # 文件名决定标题
-    run_mode = os.path.basename(error_file).replace(".csv", "")
+    pos_mean, pos_max, pos_mse = stats(pos_err) if pos_err else (0,0,0)
+    vel_mean, vel_max, vel_mse = stats(vel_err) if vel_err else (0,0,0)
 
-    # 画图
-    plt.figure()
-    plt.plot(t_error, pos_norm, label="pos error norm")
-    plt.xlabel("time [s]")
-    plt.ylabel("position error [m]")
-    plt.title(f"Position Error ({run_mode})")
-    plt.grid()
-    plt.legend()
-    plt.savefig(run_mode + "_pos_error.png", dpi=300)
+    # 构建表格
+    table = f"""
++---------------------+----------+---------+---------+
+|       Metric        |   Mean   |   Max   |   MSE   |
++---------------------+----------+---------+---------+
+| Position error [m]  | {pos_mean:7.4f}  | {pos_max:7.4f} | {pos_mse:7.4f} |
+| Velocity error [m/s]| {vel_mean:7.4f}  | {vel_max:7.4f} | {vel_mse:7.4f} |
++---------------------+----------+---------+---------+
+"""
+    print("STATS_OUTPUT:")
+    print(table)
 
-    plt.figure()
-    plt.plot(t_error, vel_norm, label="vel error norm")
-    plt.xlabel("time [s]")
-    plt.ylabel("velocity error [m/s]")
-    plt.title(f"Velocity Error ({run_mode})")
-    plt.grid()
-    plt.legend()
-    plt.savefig(run_mode + "_vel_error.png", dpi=300)
 
-    plt.figure()
-    plt.plot(t_odom, odom_vel_norm, label="ground truth speed")
-    plt.xlabel("time [s]")
-    plt.ylabel("velocity norm [m/s]")
-    plt.title(f"Ground Truth Velocity ({run_mode})")
-    plt.grid()
-    plt.legend()
-    plt.savefig(run_mode + "_truth_vel.png", dpi=300)
+def plot_and_save(file_path):
+    base_name = os.path.basename(file_path).replace(".csv","")
+    times_gt, pos_gt, vel_gt, times_fused, pos_fused, vel_fused, times_err, pos_err, vel_err = load_csv(file_path)
 
-    plt.show()
+    # 计算统计数据
+    # compute_stats(pos_err, "Position error norm")
+    # compute_stats(vel_err, "Velocity error norm")
+    compute_stats_table(pos_err, vel_err)
+    fig, axs = plt.subplots(2,2, figsize=(12,8))
+
+    # subplot (0,0) 位置对比
+    axs[0,0].plot(times_gt, vector_norm_list(pos_gt), label="GT pos")
+    axs[0,0].plot(times_fused, vector_norm_list(pos_fused), label="Fused pos")
+    axs[0,0].set_ylabel("Position [m]")
+    axs[0,0].legend()
+    axs[0,0].set_title("Position comparison")
+
+    # subplot (0,1) 速度对比
+    axs[0,1].plot(times_gt, vector_norm_list(vel_gt), label="GT vel")
+    axs[0,1].plot(times_fused, vector_norm_list(vel_fused), label="Fused vel")
+    axs[0,1].set_ylabel("Velocity [m/s]")
+    axs[0,1].legend()
+    axs[0,1].set_title("Velocity comparison")
+
+    # subplot (1,0) 位置误差
+    axs[1,0].plot(times_err, pos_err, label="Position error norm", color="b")
+    axs[1,0].set_ylabel("Position error [m]")
+    axs[1,0].legend()
+    axs[1,0].set_xlabel("Time [s]")
+
+    # subplot (1,1) 速度误差
+    axs[1,1].plot(times_err, vel_err, label="Velocity error norm", color="r")
+    axs[1,1].set_ylabel("Velocity error [m/s]")
+    axs[1,1].legend()
+    axs[1,1].set_xlabel("Time [s]")
+
+    plt.suptitle(base_name, fontsize=14)
+    plt.tight_layout(rect=[0, 0, 1, 0.95])
+
+    save_path = os.path.join(STATIC_DIR, f"{base_name}_error.png")
+    plt.savefig(save_path, dpi=300)
+    plt.close(fig)
+
+    # 打印图片路径给 Flask
+    print("PLOT_IMAGE:", save_path)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python analyze_logs.py error_file.csv odom_file.csv")
+    if len(sys.argv)<2:
+        print("Usage: logs_plot.py <logfile.csv>")
         sys.exit(1)
 
-    error_file = sys.argv[1]
-    odom_file = sys.argv[2]
-    analyze_logs(error_file, odom_file)
+    file_path = sys.argv[1]
+    plot_and_save(file_path)

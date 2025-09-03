@@ -42,17 +42,17 @@ class ErrorAnalyzer:
         )   
         
         # cooperative pose (仅 drone_0 用)
-        if self.drone_id == 0:
-            rospy.Subscriber(
-                f'{drone_prefix}/odom_fused_cooperative_pose',
-                Odometry,
-                self.cooperative_pose_callback
-            )
-            self.co_loc_error_pub = rospy.Publisher(
-                f'{drone_prefix}/co_loc_error',
-                Float64MultiArray,
-                queue_size=10
-            )
+        # if self.drone_id == 0:
+        #     rospy.Subscriber(
+        #         f'{drone_prefix}/odom_fused_cooperative_pose',
+        #         Odometry,
+        #         self.cooperative_pose_callback
+        #     )
+        #     self.co_loc_error_pub = rospy.Publisher(
+        #         f'{drone_prefix}/co_loc_error',
+        #         Float64MultiArray,
+        #         queue_size=10
+        #     )
 
         # ---------------- 发布话题 ----------------
         self.ig_global_error_pub = rospy.Publisher(
@@ -130,7 +130,20 @@ class ErrorAnalyzer:
         ])
         self.ig_global_vel = est_vel
         self.compute_and_publish_error(est_pos, est_vel, self.ig_global_error_pub)
-
+        
+    def iv_callback(self, msg: Odometry):
+        est_pos = np.array([
+            msg.pose.pose.position.x,
+            msg.pose.pose.position.y,
+            msg.pose.pose.position.z
+        ])
+        est_vel = np.array([
+            msg.twist.twist.linear.x,
+            msg.twist.twist.linear.y,
+            msg.twist.twist.linear.z
+        ])
+        self.compute_and_publish_error(est_pos, est_vel, self.iv_error_pub)
+    
     # def iv_hp_callback(self, msg: Odometry):
     #     est_pos = np.array([
     #         msg.pose.pose.position.x,
@@ -144,32 +157,20 @@ class ErrorAnalyzer:
     #     ])
     #     self.compute_and_publish_error(est_pos, est_vel, self.iv_hp_error_pub)
 
-    def iv_callback(self, msg: Odometry):
-        est_pos = np.array([
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.pose.pose.position.z
-        ])
-        est_vel = np.array([
-            msg.twist.twist.linear.x,
-            msg.twist.twist.linear.y,
-            msg.twist.twist.linear.z
-        ])
-        self.compute_and_publish_error(est_pos, est_vel, self.iv_error_pub)
 
-    def cooperative_pose_callback(self, msg: Odometry):
-        est_pos = np.array([
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.pose.pose.position.z
-        ])
+    # def cooperative_pose_callback(self, msg: Odometry):
+    #     est_pos = np.array([
+    #         msg.pose.pose.position.x,
+    #         msg.pose.pose.position.y,
+    #         msg.pose.pose.position.z
+    #     ])
         
-        est_vel = np.array([
-            msg.twist.twist.linear.x,
-            msg.twist.twist.linear.y,
-            msg.twist.twist.linear.z
-        ])
-        self.compute_and_publish_error(est_pos, est_vel, self.co_loc_error_pub)
+    #     est_vel = np.array([
+    #         msg.twist.twist.linear.x,
+    #         msg.twist.twist.linear.y,
+    #         msg.twist.twist.linear.z
+    #     ])
+    #     self.compute_and_publish_error(est_pos, est_vel, self.co_loc_error_pub)
 
     # ---------------- 主循环 ----------------
     def run(self):

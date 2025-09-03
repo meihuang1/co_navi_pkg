@@ -1,0 +1,12 @@
+<launch>
+    <arg name="run_mode"/>
+    <arg name="fusion_mode"/>
+
+    <node pkg="co_navi_pkg" type="logs_save.py" name="log_save">
+        <param name="run_mode" value="$(arg run_mode)" />
+        <param name="fusion_mode" value="$(arg fusion_mode)" />
+    </node>
+
+    <node pkg="co_navi_pkg" type ="velocity_writer.py" name="velocity_writer"/>
+
+</launch>

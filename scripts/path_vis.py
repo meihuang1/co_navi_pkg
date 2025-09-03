@@ -27,13 +27,13 @@ class OdomToPath:
         pose.header = msg.header
         pose.header.frame_id = "world"
         pose.pose = msg.pose.pose
-
+        
         # 累积轨迹
         self.path.header.stamp = rospy.Time.now()
         self.path.poses.append(pose)
 
         # 发布 path
-        self.path_pub.publish(self.path)
+        # self.path_pub.publish(self.path)
 
 if __name__ == "__main__":
     rospy.init_node("odom_to_path")

@@ -1,0 +1,5 @@
+<launch>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find co_navi_pkg)/launch/mid_speed/run_files/mid_default.rviz" required="true" />
+
+  <node pkg="tf" type="static_transform_publisher" name="world_to_map_broadcaster" args="0 0 0 0 0 0 world map 100" />
+</launch>

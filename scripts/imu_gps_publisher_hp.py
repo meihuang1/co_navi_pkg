@@ -17,7 +17,8 @@ last_t = None
 
 # IMU 噪声参数
 ang_acc_noise_std = 0.001
-lin_acc_noise_std = 0.001
+lin_acc_noise_std = 0.2
+# lin_acc_noise_std = 0.0
 ori_noise_std = 0.001
 
 # 噪声缓存，用于生成零均值积分噪声

@@ -10,7 +10,7 @@
 #include <string>
 #include <boost/bind.hpp>
 #include <deque>
-
+#include <std_msgs/Float64MultiArray.h>
 class CooperativeLocalization
 {
 public:
@@ -55,7 +55,9 @@ public:
                 boost::bind(&CooperativeLocalization::distance3DCallback, this, _1, i));
             distance3d_subs_.push_back(sub3d);
         }
-
+        odom_vis_sub_ = nh_.subscribe<nav_msgs::Odometry>(
+            topic_prefix + "_visual_slam/odom", 1,
+            &CooperativeLocalization::odomVisCallback, this);
         // 订阅 IMU 积分结果（用于 Z）
         imu_sub_ = nh_.subscribe<nav_msgs::Odometry>(
             topic_prefix + "/odom_fused_IG", 1,
@@ -63,7 +65,8 @@ public:
 
         fused_odom_pub_ = nh_.advertise<nav_msgs::Odometry>(
             topic_prefix + "/odom_fused_cooperative_pose", 10);
-
+        co_error_pub_ = nh_.advertise<std_msgs::Float64MultiArray>(
+            topic_prefix + "/co_loc_error", 10);
         ROS_INFO("Cooperative Localization initialized for drone_%d in %s mode", drone_id_, mode_.c_str());
     }
 
@@ -76,14 +79,17 @@ private:
     std::vector<ros::Subscriber> drone_subs_;
     std::vector<ros::Subscriber> distance2d_subs_;
     std::vector<ros::Subscriber> distance3d_subs_;
-    ros::Subscriber imu_sub_;
-    ros::Publisher fused_odom_pub_;
+    ros::Subscriber imu_sub_, odom_vis_sub_;
+    ros::Publisher fused_odom_pub_, co_error_pub_;
 
     std::vector<Eigen::Vector3d> drone_positions_;
     std::vector<double> distances2d_;
     std::vector<double> distances3d_;
     double my_z_ = 0.0;
     Eigen::Vector3d myVel_;
+
+    Eigen::Vector3d visPos_, visVel_;
+
     // ----------------- 回调 -----------------
     void imuCallback(const nav_msgs::Odometry::ConstPtr &msg)
     {
@@ -93,6 +99,16 @@ private:
 
         my_z_ = msg->pose.pose.position.z;
         tryTrilateration();
+    }
+    void odomVisCallback(const nav_msgs::Odometry::ConstPtr &msg){
+        Eigen::Vector3d pos(msg->pose.pose.position.x,
+                            msg->pose.pose.position.y,
+                            msg->pose.pose.position.z);
+        Eigen::Vector3d vel(msg->twist.twist.linear.x,
+                            msg->twist.twist.linear.y,
+                            msg->twist.twist.linear.z);
+        visPos_ = pos;
+        visVel_ = vel;
     }
 
     void dronePoseCallback(const nav_msgs::Odometry::ConstPtr &msg, int id)
@@ -315,6 +331,14 @@ private:
         msg.twist.twist.linear.z = myVel_.z();
 
         fused_odom_pub_.publish(msg);
+
+        std_msgs::Float64MultiArray err_msgs;
+        Eigen::Vector3d pos_err = visPos_ - pos;
+        Eigen::Vector3d vel_err = visVel_ - myVel_;
+
+        err_msgs.data = {pos_err.x(), pos_err.y(), pos_err.z(), pos_err.norm(),
+                        vel_err.x(), vel_err.y(), vel_err.z(), vel_err.norm()};
+        co_error_pub_.publish(err_msgs);
 
         if (mode_ == "3d")
             ROS_INFO_THROTTLE(1.0, "Published 3D fused odom: (%.3f, %.3f, %.3f)", 

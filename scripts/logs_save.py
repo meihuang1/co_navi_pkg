@@ -15,32 +15,37 @@ class TopicLogger:
         self.run_mode = rospy.get_param("~run_mode", "default")
         self.fusion_mode = rospy.get_param("~fusion_mode", "imu_gps")
 
-        # 输出文件名：runmode + fusionmode
+        # 输出文件名
         file_path = os.path.join(
             self.log_dir, f"{self.run_mode}_{self.fusion_mode}.csv"
         )
         self.file = open(file_path, "w", newline="")
         self.writer = csv.writer(self.file)
 
-        # 写表头（groundtruth + fusion）
+        # 写表头
         self.writer.writerow([
-            "stamp_gt", "x", "y", "z", "vx", "vy", "vz",
-            "stamp_fusion", "fusion_data[]"
+            "stamp_gt", "x_gt", "y_gt", "z_gt", "vx_gt", "vy_gt", "vz_gt",
+            "stamp_fusion", "pos_err_norm", "vel_err_norm",
+            "stamp_fused", "x_fused", "y_fused", "z_fused", "vx_fused", "vy_fused", "vz_fused"
         ])
 
-        # 设置订阅
+        # 订阅 fusion 话题和额外 fused odom
         topics_float = {
-            "imu_gps": "/drone_0/error_ig_global",
-            "imu_vision": "/drone_0/error_iv",
-            "imu_vision_high_precision": "/drone_0/error_iv_hp",
-            "cooperation_navigation": "/drone_0/co_loc_error",
-            "cooperation_navigation_hetero": "/drone_0/co_loc_error",
+            "imu_gps": ("/drone_0/error_ig_global", "/drone_0/odom_fused_IG_global"),
+            "imu_vision": ("/drone_0/error_iv", "/drone_0/odom_fused_IV"),
+            "imu_vision_high_precision": ("/drone_0/error_iv_hp", "/drone_0/odom_fused_IV_hp"),
+            "cooperation_navigation": ("/drone_0/co_loc_error", "/drone_0/odom_fused_cooperative_pose"),
+            "cooperation_navigation_hetero": ("/drone_0/co_loc_error", "/drone_0/odom_fused_cooperative_pose"),
         }
 
-        self.fusion_topic = topics_float.get(self.fusion_mode, None)
+        fusion_topic, fused_topic = topics_float.get(self.fusion_mode, (None, None))
 
-        if self.fusion_topic:
-            rospy.Subscriber(self.fusion_topic, Float64MultiArray, self.fusion_callback)
+        if fusion_topic:
+            rospy.Subscriber(fusion_topic, Float64MultiArray, self.err_norm_callback)
+        if fused_topic:
+            rospy.Subscriber(fused_topic, Odometry, self.fused_odom_callback)
+
+        # ground truth
         rospy.Subscriber("/drone_0_visual_slam/odom", Odometry, self.odom_callback)
 
         rospy.loginfo(
@@ -50,10 +55,11 @@ class TopicLogger:
             self.fusion_mode,
         )
 
-    def fusion_callback(self, msg: Float64MultiArray):
+    def err_norm_callback(self, msg: Float64MultiArray):
         stamp = rospy.Time.now().to_sec()
-        # ground truth 部分留空，只写 fusion
-        row = ["", "", "", "", "", "", "", stamp] + list(msg.data)
+        pos_err = msg.data[3]  # 原 pos_err_norm
+        vel_err = msg.data[7]  # 原 vel_err_norm
+        row = ["", "", "", "", "", "", "", stamp, pos_err, vel_err, "", "", "", "", "", "", ""]
         self.writer.writerow(row)
         self.file.flush()
 
@@ -61,8 +67,15 @@ class TopicLogger:
         stamp = msg.header.stamp.to_sec()
         pos = msg.pose.pose.position
         vel = msg.twist.twist.linear
-        # fusion 部分留空，只写 odom
-        row = [stamp, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z, "", ""]
+        row = [stamp, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z, "", "", "", "", "", "", "", "", "", ""]
+        self.writer.writerow(row)
+        self.file.flush()
+
+    def fused_odom_callback(self, msg: Odometry):
+        stamp = msg.header.stamp.to_sec()
+        pos = msg.pose.pose.position
+        vel = msg.twist.twist.linear
+        row = ["", "", "", "", "", "", "", "", "", "", stamp, pos.x, pos.y, pos.z, vel.x, vel.y, vel.z]
         self.writer.writerow(row)
         self.file.flush()
 
